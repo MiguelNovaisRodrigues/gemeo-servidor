@@ -1,0 +1,6 @@
+{
+  "name": "gemeo-servidor",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Servidor-ponte entre o Gémeo Digital e o Google Drive"
+}
