@@ -17,6 +17,7 @@
             --color-cst: #9e2a2b;
             --color-produtos: #5a6b5d;
             --color-sondas: #b86e00;
+            --color-leituras: #2c6fad;
         }
         body, html {
             margin: 0; padding: 0; width: 100%; height: 100vh;
@@ -180,6 +181,31 @@
         .sonda-link { font-size: 11px; color: var(--color-cst); text-decoration: none; font-weight: 500; }
         .sonda-link:hover { text-decoration: underline; }
         .sondas-empty { font-size: 13px; color: var(--text-muted); font-style: italic; text-align: center; padding: 40px 0; }
+        /* Leituras */
+        .node-leituras { cursor: pointer; }
+        .leituras-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border-fine); margin-bottom: 18px; flex-shrink: 0; }
+        .leituras-tab { padding: 10px 18px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; cursor: pointer; color: var(--text-muted); border-bottom: 2px solid transparent; background: none; border-top: none; border-left: none; border-right: none; font-family: inherit; }
+        .leituras-tab.active { color: var(--color-leituras); border-bottom-color: var(--color-leituras); }
+        .leitura-card { padding: 16px 0; border-bottom: 1px solid var(--border-fine); }
+        .leitura-card:last-child { border-bottom: none; }
+        .leitura-titulo { font-size: 13px; font-weight: 600; margin-bottom: 5px; color: var(--text-main); line-height: 1.4; }
+        .leitura-meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; font-size: 11px; color: var(--text-muted); }
+        .leitura-analise { font-size: 12px; line-height: 1.6; color: #444; margin-bottom: 10px; border-left: 2px solid var(--color-leituras); padding-left: 10px; background: #f0f6ff; padding: 8px 10px; border-radius: 0 2px 2px 0; }
+        .leitura-links { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+        .leitura-link { font-size: 11px; color: var(--color-leituras); text-decoration: none; font-weight: 500; }
+        .leitura-link:hover { text-decoration: underline; }
+        .leitura-btns { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+        .leitura-btn { padding: 5px 12px; font-size: 11px; font-weight: 600; cursor: pointer; text-transform: uppercase; letter-spacing: 0.5px; font-family: inherit; border-radius: 2px; }
+        .leitura-btn-aceitar { background: var(--color-leituras); color: #fff; border: 1px solid var(--color-leituras); }
+        .leitura-btn-lida { background: var(--color-produtos); color: #fff; border: 1px solid var(--color-produtos); }
+        .leitura-btn-saltar { background: transparent; border: 1px solid #ccc; color: var(--text-muted); }
+        .leitura-btn-saltar:hover { border-color: var(--color-cst); color: var(--color-cst); }
+        .leitura-notas { width: 100%; box-sizing: border-box; padding: 7px 10px; font-size: 12px; border: 1px solid var(--border-fine); font-family: inherit; outline: none; border-radius: 2px; resize: vertical; min-height: 60px; margin-top: 8px; }
+        .leitura-notas:focus { border-color: var(--color-leituras); }
+        .leituras-empty { font-size: 13px; color: var(--text-muted); font-style: italic; text-align: center; padding: 40px 0; }
+        .leituras-loading { font-size: 13px; color: var(--text-muted); font-style: italic; text-align: center; padding: 40px 0; }
+        .badge-selecionada { color: var(--color-leituras); background: #e8f1fb; border: 1px solid #aac8ef; }
+        .badge-lida { color: #fff; background: var(--color-produtos); }
         /* IA */
         .ai-textarea { width: 100%; box-sizing: border-box; padding: 9px 11px; font-size: 13px; border: 1px solid var(--border-fine); font-family: inherit; outline: none; border-radius: 2px; resize: vertical; min-height: 80px; }
         .ai-textarea:focus { border-color: var(--text-main); }
@@ -296,6 +322,20 @@
                 <div id="sondas-list" style="overflow-y: auto; flex-grow: 1;"></div>
             </div>
         </div>
+        <div class="dialog-back" id="leituras-dialog-back">
+            <div class="dialog" style="width: 700px; max-height: 85vh; overflow: hidden; display: flex; flex-direction: column; padding: 28px; box-sizing: border-box;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-shrink: 0;">
+                    <h3 style="margin: 0;">📚 Leituras</h3>
+                    <button class="btn-close" onclick="closeLeiturasDialog()">Fechar</button>
+                </div>
+                <div class="leituras-tabs" id="leituras-tabs">
+                    <button class="leituras-tab active" onclick="setLeiturasTab('sugeridas')">Sugestões</button>
+                    <button class="leituras-tab" onclick="setLeiturasTab('selecionadas')">A ler</button>
+                    <button class="leituras-tab" onclick="setLeiturasTab('arquivo')">Arquivo</button>
+                </div>
+                <div id="leituras-list" style="overflow-y: auto; flex-grow: 1;"></div>
+            </div>
+        </div>
         <div class="dialog-back" id="ai-dialog-back">
             <div class="dialog" style="width: 440px;">
                 <h3>Perguntar à IA</h3>
@@ -320,6 +360,7 @@
         ];
         const siloColor = id => {
             if (id === '__sonda__') return 'var(--color-sondas)';
+            if (id === '__leituras__') return 'var(--color-leituras)';
             return (SILOS.find(s => s.id === id) || {}).color || "#999";
         };
         const siloLabel = id => (SILOS.find(s => s.id === id) || {}).label || id;
@@ -361,8 +402,14 @@
         const AI_URL = "https://gemeo-servidor.vercel.app/api/ai";
         const SONDAS_URL = "https://gemeo-servidor.vercel.app/api/sondas";
         const REJEICOES_URL = "https://gemeo-servidor.vercel.app/api/rejeicoes";
+        const LEITURAS_URL = "https://gemeo-servidor.vercel.app/api/leituras";
+        const LEITURAS_BUSCAR_URL = "https://gemeo-servidor.vercel.app/api/leituras-buscar";
         const SONDA_NODE = { id: '__sonda__', type: 'sonda', silo: '__sonda__', label: 'Chamadas' };
+        const LEITURAS_NODE = { id: '__leituras__', type: 'leituras', silo: '__leituras__', label: 'Leituras' };
         let sondasData = [];
+        let leiturasData = [];
+        let leiturasTab = 'sugeridas';
+        let leiturasActivaSondaId = null;
         let driveTimer = null, driveState = "idle";
 
         // --- Toast ---
@@ -477,8 +524,12 @@
         }
         function nodesForSimulation() {
             const hoje = new Date().toISOString().slice(0, 10);
-            const active = sondasData.filter(s => s.status !== 'enviada' && s.prazo >= hoje);
-            return active.length > 0 ? [...data.nodes, SONDA_NODE] : [...data.nodes];
+            const activeSondas = sondasData.filter(s => s.status !== 'enviada' && s.prazo >= hoje);
+            const activeLeits = leiturasData.filter(l => l.status === 'selecionada' || l.status === 'lida');
+            let nodes = [...data.nodes];
+            if (activeSondas.length > 0) nodes = [...nodes, SONDA_NODE];
+            if (activeLeits.length > 0) nodes = [...nodes, LEITURAS_NODE];
+            return nodes;
         }
         function buildSimulation() {
             simulation = d3.forceSimulation(nodesForSimulation())
@@ -641,6 +692,7 @@
         function onNodeClick(event, d) {
             if (linkMode) { handleLinkClick(d); return; }
             if (d.type === "sonda") { openSondasDialog(); return; }
+            if (d.type === "leituras") { openLeiturasDialog(null); return; }
             if (d.type === "leaf") openEditor(d.id);
         }
         function toggleLinkMode() {
@@ -908,7 +960,7 @@
                     : '<span class="sonda-status-badge badge-pendente">Pendente</span>';
                 const btnPreparar = s.status === 'pendente'
                     ? `<button class="sonda-btn sonda-btn-preparar" onclick="ativarSonda('${s.id}')">Preparar</button>`
-                    : '';
+                    : `<button class="sonda-btn sonda-btn-preparar" style="background:var(--color-leituras);border-color:var(--color-leituras)" onclick="openLeiturasDialog('${s.id}')">📚 Leituras</button>`;
                 const urlLink = s.url
                     ? `<a class="sonda-link" href="${s.url}" target="_blank">↗ Ver chamada</a>`
                     : '';
@@ -947,6 +999,142 @@
             await registarRejeicao(s);
             sondasData = sondasData.filter(x => x.id !== id);
             saveSondas(); renderSondasDialog(); render();
+        };
+
+        // --- Leituras ---
+        async function loadLeituras() {
+            try {
+                const resp = await fetch(LEITURAS_URL, { method: 'GET' });
+                const r = await resp.json();
+                if (r && r.existe && r.dados && Array.isArray(r.dados.leituras)) {
+                    leiturasData = r.dados.leituras;
+                } else {
+                    leiturasData = [];
+                }
+                render();
+            } catch(e) { console.warn("Leituras indisponíveis:", e); }
+        }
+        async function saveLeituras() {
+            try {
+                await fetch(LEITURAS_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ leituras: leiturasData })
+                });
+            } catch(e) { console.warn("Erro ao guardar leituras:", e); }
+        }
+        window.openLeiturasDialog = function(sondaId) {
+            leiturasActivaSondaId = sondaId;
+            leiturasTab = 'sugeridas';
+            renderLeiturasDialog();
+            document.getElementById('leituras-dialog-back').classList.add('show');
+        };
+        window.closeLeiturasDialog = function() {
+            document.getElementById('leituras-dialog-back').classList.remove('show');
+        };
+        window.setLeiturasTab = function(tab) {
+            leiturasTab = tab;
+            document.querySelectorAll('.leituras-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.leituras-tab').forEach(t => {
+                if (t.textContent.toLowerCase().includes(tab === 'sugeridas' ? 'sug' : tab === 'selecionadas' ? 'ler' : 'arq')) t.classList.add('active');
+            });
+            renderLeiturasDialog();
+        };
+        function renderLeiturasDialog() {
+            const list = document.getElementById('leituras-list');
+            const filtradas = leiturasActivaSondaId
+                ? leiturasData.filter(l => l.sonda_id === leiturasActivaSondaId)
+                : leiturasData;
+            let items;
+            if (leiturasTab === 'sugeridas') items = filtradas.filter(l => l.status === 'sugerida');
+            else if (leiturasTab === 'selecionadas') items = filtradas.filter(l => l.status === 'selecionada');
+            else items = filtradas.filter(l => l.status === 'lida');
+            if (items.length === 0) {
+                const msgs = { sugeridas: 'Sem sugestões ainda. Clica "Buscar Papers" numa chamada ativa.', selecionadas: 'Nenhum paper selecionado ainda.', arquivo: 'Arquivo vazio — os papers que marcares como lidos aparecem aqui.' };
+                list.innerHTML = `<div class="leituras-empty">${msgs[leiturasTab]}</div>`;
+                // Botão buscar na aba sugeridas quando há sonda ativa
+                if (leiturasTab === 'sugeridas' && leiturasActivaSondaId) {
+                    list.innerHTML += `<div style="text-align:center;margin-top:16px"><button class="sonda-btn sonda-btn-preparar" id="buscar-btn" onclick="buscarLeituras()">🔍 Buscar Papers</button></div>`;
+                }
+                return;
+            }
+            list.innerHTML = leiturasTab === 'sugeridas' && leiturasActivaSondaId
+                ? `<div style="text-align:right;margin-bottom:12px"><button class="sonda-btn sonda-btn-preparar" style="font-size:10px" id="buscar-btn" onclick="buscarLeituras()">🔍 Actualizar busca</button></div>`
+                : '';
+            items.forEach(l => {
+                const card = document.createElement('div');
+                card.className = 'leitura-card';
+                const links = [];
+                if (l.url_doi) links.push(`<a class="leitura-link" href="${l.url_doi}" target="_blank">↗ DOI</a>`);
+                if (l.url_open_access) links.push(`<a class="leitura-link" href="${l.url_open_access}" target="_blank">🔓 Open Access</a>`);
+                const btns = leiturasTab === 'sugeridas'
+                    ? `<button class="leitura-btn leitura-btn-aceitar" onclick="aceitarLeitura('${l.id}')">Selecionar</button>
+                       <button class="leitura-btn leitura-btn-saltar" onclick="saltarLeitura('${l.id}')">Ignorar</button>`
+                    : leiturasTab === 'selecionadas'
+                    ? `<button class="leitura-btn leitura-btn-lida" onclick="marcarLida('${l.id}')">Marcar como lida ✓</button>`
+                    : `<span style="font-size:11px;color:var(--text-muted)">Lida em ${l.data_leitura || '—'}</span>`;
+                const notasId = `notas-${l.id}`;
+                const notasArea = (leiturasTab === 'selecionadas' || leiturasTab === 'arquivo')
+                    ? `<textarea class="leitura-notas" id="${notasId}" placeholder="Notas e anotações…" onblur="guardarNotas('${l.id}', this.value)">${l.notas || ''}</textarea>`
+                    : '';
+                card.innerHTML = `
+                    <div class="leitura-titulo">${l.titulo}</div>
+                    <div class="leitura-meta">
+                        ${l.autores && l.autores.length ? l.autores.slice(0,3).join(', ') + (l.autores.length > 3 ? ' et al.' : '') : ''}
+                        ${l.ano ? '· ' + l.ano : ''}
+                        ${l.revista ? '· <em>' + l.revista + '</em>' : ''}
+                        ${l.citacoes ? '· ' + l.citacoes + ' citações' : ''}
+                    </div>
+                    ${l.analise_relevancia ? '<div class="leitura-analise">' + l.analise_relevancia + '</div>' : ''}
+                    ${links.length ? '<div class="leitura-links">' + links.join('') + '</div>' : ''}
+                    <div class="leitura-btns">${btns}</div>
+                    ${notasArea}`;
+                list.appendChild(card);
+            });
+        }
+        window.buscarLeituras = async function() {
+            if (!leiturasActivaSondaId) return;
+            const sonda = sondasData.find(s => s.id === leiturasActivaSondaId);
+            if (!sonda) return;
+            const btn = document.getElementById('buscar-btn');
+            if (btn) { btn.disabled = true; btn.textContent = '🔍 A buscar…'; }
+            document.getElementById('leituras-list').innerHTML = '<div class="leituras-loading">A buscar papers e a analisar relevância… pode demorar alguns segundos.</div>';
+            try {
+                const resp = await fetch(LEITURAS_BUSCAR_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(sonda)
+                });
+                const r = await resp.json();
+                if (r.papers && r.papers.length > 0) {
+                    // Remover sugestões antigas desta sonda, adicionar novas
+                    leiturasData = leiturasData.filter(l => !(l.sonda_id === leiturasActivaSondaId && l.status === 'sugerida'));
+                    leiturasData = [...leiturasData, ...r.papers];
+                    await saveLeituras();
+                    render();
+                    renderLeiturasDialog();
+                } else {
+                    document.getElementById('leituras-list').innerHTML = '<div class="leituras-empty">Sem resultados. Tenta mais tarde.</div>';
+                }
+            } catch(e) {
+                document.getElementById('leituras-list').innerHTML = '<div class="leituras-empty">Erro: ' + e.message + '</div>';
+            }
+        };
+        window.aceitarLeitura = function(id) {
+            const l = leiturasData.find(x => x.id === id);
+            if (l) { l.status = 'selecionada'; saveLeituras(); render(); renderLeiturasDialog(); }
+        };
+        window.saltarLeitura = function(id) {
+            leiturasData = leiturasData.filter(x => x.id !== id);
+            saveLeituras(); renderLeiturasDialog();
+        };
+        window.marcarLida = function(id) {
+            const l = leiturasData.find(x => x.id === id);
+            if (l) { l.status = 'lida'; l.data_leitura = new Date().toISOString().slice(0,10); saveLeituras(); render(); renderLeiturasDialog(); }
+        };
+        window.guardarNotas = function(id, notas) {
+            const l = leiturasData.find(x => x.id === id);
+            if (l) { l.notas = notas; saveLeituras(); }
         };
 
         function buildSiloMenu() {
@@ -1005,7 +1193,7 @@
             if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) window.sendAI();
         });
 
-        buildSiloMenu(); buildSimulation(); render(); loadSondas();
+        buildSiloMenu(); buildSimulation(); render(); loadSondas(); loadLeituras();
         document.getElementById("conjunto-btn").classList.add("armed");
         if (recoveredNote) {
             setSaveState("error", "Dados recuperados de cópia");
