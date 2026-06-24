@@ -645,6 +645,7 @@
         function dimmedSilo(silo) { return focusSilo !== null && silo !== focusSilo; }
 
         function render() {
+            const allNodes = nodesForSimulation();
             const suggSet = [];
             data.nodes.forEach(n => {
                 if (n.type !== "leaf") return;
@@ -692,7 +693,6 @@
                     return dimmedSilo(s.silo) && dimmedSilo(t.silo);
                 });
 
-            const allNodes = nodesForSimulation();
             nodeSel = svg.selectAll("circle.node").data(allNodes, d=>d.id);
             nodeSel.exit().remove();
             const nodeEnter = nodeSel.enter().append("circle")
