@@ -1,6 +1,6 @@
 import { lerGist, escreverGist } from "./_gist.js";
 
-const NOME_FICHEIRO = "gemeo-dados.json";
+const NOME_FICHEIRO = "gemeo-rejeicoes.json";
 
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -11,8 +11,8 @@ export default async function handler(req, res) {
   try {
     if (req.method === "GET") {
       const conteudo = await lerGist(NOME_FICHEIRO);
-      if (!conteudo || conteudo === "{}") {
-        res.status(200).json({ existe: false, dados: null });
+      if (!conteudo) {
+        res.status(200).json({ existe: false, dados: { rejeicoes: [] } });
         return;
       }
       res.status(200).json({ existe: true, dados: JSON.parse(conteudo) });
