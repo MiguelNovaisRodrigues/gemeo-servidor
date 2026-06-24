@@ -404,6 +404,7 @@
         const REJEICOES_URL = "https://gemeo-servidor.vercel.app/api/rejeicoes";
         const LEITURAS_URL = "https://gemeo-servidor.vercel.app/api/leituras";
         const LEITURAS_BUSCAR_URL = "https://gemeo-servidor.vercel.app/api/leituras-buscar";
+        const LEITURAS_ANALISAR_URL = "https://gemeo-servidor.vercel.app/api/leituras-analisar";
         const SONDA_NODE = { id: '__sonda__', type: 'sonda', silo: '__sonda__', label: 'Chamadas' };
         const LEITURAS_NODE = { id: '__leituras__', type: 'leituras', silo: '__leituras__', label: 'Leituras' };
         let sondasData = [];
@@ -1086,7 +1087,9 @@
                         ${l.revista ? '· <em>' + l.revista + '</em>' : ''}
                         ${l.citacoes ? '· ' + l.citacoes + ' citações' : ''}
                     </div>
-                    ${l.analise_relevancia ? '<div class="leitura-analise">' + l.analise_relevancia + '</div>' : ''}
+                    ${l.analise_relevancia
+                        ? '<div class="leitura-analise">' + l.analise_relevancia + '</div>'
+                        : (leiturasTab === 'sugeridas' ? `<div><button class="leitura-btn leitura-btn-saltar" style="font-size:10px;margin-bottom:8px" onclick="analisarLeitura('${l.id}', this)">✦ Analisar relevância</button><div class="leitura-analise" id="analise-${l.id}" style="display:none"></div></div>` : '')}
                     ${links.length ? '<div class="leitura-links">' + links.join('') + '</div>' : ''}
                     <div class="leitura-btns">${btns}</div>
                     ${notasArea}`;
@@ -1132,6 +1135,29 @@
         window.marcarLida = function(id) {
             const l = leiturasData.find(x => x.id === id);
             if (l) { l.status = 'lida'; l.data_leitura = new Date().toISOString().slice(0,10); saveLeituras(); render(); renderLeiturasDialog(); }
+        };
+        window.analisarLeitura = async function(id, btn) {
+            const l = leiturasData.find(x => x.id === id);
+            const sonda = sondasData.find(s => s.id === l?.sonda_id);
+            if (!l || !sonda) return;
+            btn.disabled = true; btn.textContent = '✦ A analisar…';
+            const box = document.getElementById('analise-' + id);
+            if (box) { box.style.display = 'block'; box.textContent = 'A consultar Claude…'; }
+            try {
+                const r = await fetch(LEITURAS_ANALISAR_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ paper: l, sonda })
+                });
+                const data = await r.json();
+                l.analise_relevancia = data.analise || 'Sem análise.';
+                if (box) { box.textContent = l.analise_relevancia; }
+                btn.style.display = 'none';
+                saveLeituras();
+            } catch(e) {
+                if (box) { box.textContent = 'Erro: ' + e.message; }
+                btn.disabled = false; btn.textContent = '✦ Analisar relevância';
+            }
         };
         window.guardarNotas = function(id, notas) {
             const l = leiturasData.find(x => x.id === id);
