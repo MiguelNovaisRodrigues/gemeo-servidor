@@ -206,6 +206,8 @@
         .leituras-loading { font-size: 13px; color: var(--text-muted); font-style: italic; text-align: center; padding: 40px 0; }
         .badge-selecionada { color: var(--color-leituras); background: #e8f1fb; border: 1px solid #aac8ef; }
         .badge-lida { color: #fff; background: var(--color-produtos); }
+        .badge-classico { display: inline-block; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; padding: 2px 6px; border-radius: 2px; background: #f5edd0; color: #7a5a00; border: 1px solid #d4b96a; margin-right: 4px; vertical-align: middle; }
+        .leitura-card.classico { background: #fffef5; border-left: 3px solid #d4b96a; padding-left: 13px; }
         /* IA */
         .ai-textarea { width: 100%; box-sizing: border-box; padding: 9px 11px; font-size: 13px; border: 1px solid var(--border-fine); font-family: inherit; outline: none; border-radius: 2px; resize: vertical; min-height: 80px; }
         .ai-textarea:focus { border-color: var(--text-main); }
@@ -1065,7 +1067,8 @@
                 : '';
             items.forEach(l => {
                 const card = document.createElement('div');
-                card.className = 'leitura-card';
+                const isClassico = l.tipo === 'classico';
+                card.className = 'leitura-card' + (isClassico ? ' classico' : '');
                 const links = [];
                 if (l.url_doi) links.push(`<a class="leitura-link" href="${l.url_doi}" target="_blank">↗ DOI</a>`);
                 if (l.url_open_access) links.push(`<a class="leitura-link" href="${l.url_open_access}" target="_blank">🔓 Open Access</a>`);
@@ -1079,8 +1082,9 @@
                 const notasArea = (leiturasTab === 'selecionadas' || leiturasTab === 'arquivo')
                     ? `<textarea class="leitura-notas" id="${notasId}" placeholder="Notas e anotações…" onblur="guardarNotas('${l.id}', this.value)">${l.notas || ''}</textarea>`
                     : '';
+                const classicoBadge = isClassico ? '<span class="badge-classico">Clássico</span>' : '';
                 card.innerHTML = `
-                    <div class="leitura-titulo">${l.titulo}</div>
+                    <div class="leitura-titulo">${classicoBadge}${l.titulo}</div>
                     <div class="leitura-meta">
                         ${l.autores && l.autores.length ? l.autores.slice(0,3).join(', ') + (l.autores.length > 3 ? ' et al.' : '') : ''}
                         ${l.ano ? '· ' + l.ano : ''}

@@ -1,4 +1,5 @@
 // Busca papers no OpenAlex e ordena por relevância (call + trabalho do Miguel) via Claude Haiku.
+// Adiciona sempre referências fundacionais (clássicos canónicos) no topo.
 
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -63,6 +64,7 @@ export default async function handler(req, res) {
         citacoes: p.cited_by_count || 0,
         resumo,
         analise_relevancia: null,
+        tipo: "contemporaneo",
         status: "sugerida",
         notas: "",
         data_criacao: new Date().toISOString().slice(0, 10),
@@ -70,9 +72,17 @@ export default async function handler(req, res) {
       };
     });
 
-    // Ordenar por relevância com Claude (uma única chamada)
-    const ordenados = await ordenarPorRelevancia(resultados, sonda);
-    res.status(200).json({ ok: true, papers: ordenados });
+    // Correr scoring e referências fundacionais em paralelo
+    const [ordenados, classicos] = await Promise.all([
+      ordenarPorRelevancia(resultados, sonda),
+      sugerirClassicos(sonda),
+    ]);
+
+    // Clássicos entram no topo (sem duplicar se já vieram do OpenAlex)
+    const titulosOpenAlex = new Set(ordenados.map(p => p.titulo?.toLowerCase()));
+    const classicosNovos = classicos.filter(c => !titulosOpenAlex.has(c.titulo?.toLowerCase()));
+
+    res.status(200).json({ ok: true, papers: [...classicosNovos, ...ordenados] });
   } catch (e) {
     res.status(500).json({ erro: String(e.message || e) });
   }
@@ -120,5 +130,60 @@ Responde APENAS com JSON compacto: [{"i":0,"s":8},{"i":1,"s":3},...] — um obje
       .sort((a, b) => b.relevancia - a.relevancia);
   } catch {
     return papers; // se falhar, devolve na ordem original
+  }
+}
+
+async function sugerirClassicos(sonda) {
+  try {
+    const prompt = `${PERFIL}
+Call: "${sonda.titulo}" — áreas: ${(sonda.areas||[]).join(', ')}
+Descrição: ${(sonda.descricao||'').slice(0,300)}
+
+Lista 4 referências fundacionais canónicas (livros ou textos clássicos, não papers recentes) directamente relevantes para esta call e para o perfil acima. Inclui autores canónicos como Barthes, Benjamin, Sontag, Berger, Flusser, Sekula, Burgin, Merleau-Ponty, Butler, Derrida, Krauss, Rancière, Agamben, Tagg, Wells, Campany, Barad — conforme o tema.
+
+Responde APENAS com JSON compacto (sem texto antes ou depois):
+[{"titulo":"...","autores":["..."],"ano":1980,"editora":"...","resumo":"uma frase sobre o livro e a sua relevância para esta call"}]`;
+
+    const resp = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "x-api-key": process.env.ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 500,
+        messages: [{ role: "user", content: prompt }],
+      }),
+    });
+    const data = await resp.json();
+    const text = data.content?.[0]?.text || "[]";
+    const match = text.match(/\[[\s\S]*?\]/);
+    const refs = match ? JSON.parse(match[0]) : [];
+
+    const hoje = new Date().toISOString().slice(0, 10);
+    return refs.map(r => ({
+      id: "classico-" + Math.random().toString(36).slice(2, 8),
+      sonda_id: sonda.id,
+      titulo: r.titulo,
+      autores: r.autores || [],
+      ano: r.ano || null,
+      revista: r.editora || null,
+      doi: null,
+      url_doi: null,
+      url_open_access: null,
+      citacoes: null,
+      resumo: r.resumo || null,
+      analise_relevancia: null,
+      tipo: "classico",
+      relevancia: 10,
+      status: "sugerida",
+      notas: "",
+      data_criacao: hoje,
+      data_leitura: null,
+    }));
+  } catch {
+    return []; // se falhar, sem clássicos (não quebra o resultado principal)
   }
 }
