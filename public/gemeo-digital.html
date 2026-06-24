@@ -206,8 +206,25 @@
         .leituras-loading { font-size: 13px; color: var(--text-muted); font-style: italic; text-align: center; padding: 40px 0; }
         .badge-selecionada { color: var(--color-leituras); background: #e8f1fb; border: 1px solid #aac8ef; }
         .badge-lida { color: #fff; background: var(--color-produtos); }
-        .badge-classico { display: inline-block; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; padding: 2px 6px; border-radius: 2px; background: #f5edd0; color: #7a5a00; border: 1px solid #d4b96a; margin-right: 4px; vertical-align: middle; }
+        /* Badges de tipo */
+        .leitura-badge { display: inline-block; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; padding: 2px 6px; border-radius: 2px; margin-right: 5px; vertical-align: middle; }
+        .leitura-badge-classico { background: #f5edd0; color: #7a5a00; border: 1px solid #d4b96a; }
+        .leitura-badge-atual { background: #e8f4ec; color: #2a6b3a; border: 1px solid #8ec9a0; }
+        .leitura-badge-contemporaneo { background: #f0f0f0; color: #555; border: 1px solid #ccc; }
+        /* Cards por tipo */
         .leitura-card.classico { background: #fffef5; border-left: 3px solid #d4b96a; padding-left: 13px; }
+        .leitura-card.atual { background: #f8fdf9; border-left: 3px solid #8ec9a0; padding-left: 13px; }
+        /* Separadores de qualidade */
+        .leituras-secao { margin: 20px 0 8px; }
+        .leituras-secao-header { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+        .leituras-secao-titulo { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.2px; }
+        .leituras-secao-linha { flex: 1; height: 1px; background: var(--border-fine); }
+        .leituras-secao.obrigatoria .leituras-secao-titulo { color: #9e2a2b; }
+        .leituras-secao.obrigatoria .leituras-secao-linha { background: #f0b8b8; }
+        .leituras-secao.muito-boas .leituras-secao-titulo { color: #b86e00; }
+        .leituras-secao.muito-boas .leituras-secao-linha { background: #f0d8b0; }
+        .leituras-secao.boas .leituras-secao-titulo { color: var(--text-muted); }
+        .leituras-secao.boas .leituras-secao-linha { background: #e5e5e5; }
         /* IA */
         .ai-textarea { width: 100%; box-sizing: border-box; padding: 9px 11px; font-size: 13px; border: 1px solid var(--border-fine); font-family: inherit; outline: none; border-radius: 2px; resize: vertical; min-height: 80px; }
         .ai-textarea:focus { border-color: var(--text-main); }
@@ -1065,26 +1082,51 @@
             list.innerHTML = leiturasTab === 'sugeridas' && leiturasActivaSondaId
                 ? `<div style="text-align:right;margin-bottom:12px"><button class="sonda-btn sonda-btn-preparar" style="font-size:10px" id="buscar-btn" onclick="buscarLeituras()">🔍 Actualizar busca</button></div>`
                 : '';
-            items.forEach(l => {
+            // Agrupar por qualidade (só nas sugeridas; nas outras mantém ordem)
+            if (leiturasTab === 'sugeridas') {
+                const secoes = [
+                    { id: 'obrigatoria', label: 'Leitura Obrigatória', itens: items.filter(l => (l.relevancia || 0) >= 8) },
+                    { id: 'muito-boas',  label: 'Muito Boas',          itens: items.filter(l => (l.relevancia || 0) >= 6 && (l.relevancia || 0) < 8) },
+                    { id: 'boas',        label: 'Boas',                 itens: items.filter(l => (l.relevancia || 0) < 6) },
+                ];
+                secoes.forEach(sec => {
+                    if (sec.itens.length === 0) return;
+                    const sep = document.createElement('div');
+                    sep.className = `leituras-secao ${sec.id}`;
+                    sep.innerHTML = `<div class="leituras-secao-header"><span class="leituras-secao-titulo">${sec.label}</span><span class="leituras-secao-linha"></span></div>`;
+                    list.appendChild(sep);
+                    sec.itens.forEach(l => list.appendChild(buildLeituraCard(l, leiturasTab)));
+                });
+            } else {
+                items.forEach(l => list.appendChild(buildLeituraCard(l, leiturasTab)));
+            }
+
+            function buildLeituraCard(l, tab) {
+                const tipo = l.tipo || 'contemporaneo';
+                const isClassico = tipo === 'classico';
+                const isAtual = !isClassico && (l.ano || 0) >= 2018 && (l.relevancia || 0) >= 6;
                 const card = document.createElement('div');
-                const isClassico = l.tipo === 'classico';
-                card.className = 'leitura-card' + (isClassico ? ' classico' : '');
+                card.className = 'leitura-card' + (isClassico ? ' classico' : isAtual ? ' atual' : '');
                 const links = [];
                 if (l.url_doi) links.push(`<a class="leitura-link" href="${l.url_doi}" target="_blank">↗ DOI</a>`);
                 if (l.url_open_access) links.push(`<a class="leitura-link" href="${l.url_open_access}" target="_blank">🔓 Open Access</a>`);
-                const btns = leiturasTab === 'sugeridas'
+                const btns = tab === 'sugeridas'
                     ? `<button class="leitura-btn leitura-btn-aceitar" onclick="aceitarLeitura('${l.id}')">Selecionar</button>
                        <button class="leitura-btn leitura-btn-saltar" onclick="saltarLeitura('${l.id}')">Ignorar</button>`
-                    : leiturasTab === 'selecionadas'
+                    : tab === 'selecionadas'
                     ? `<button class="leitura-btn leitura-btn-lida" onclick="marcarLida('${l.id}')">Marcar como lida ✓</button>`
                     : `<span style="font-size:11px;color:var(--text-muted)">Lida em ${l.data_leitura || '—'}</span>`;
                 const notasId = `notas-${l.id}`;
-                const notasArea = (leiturasTab === 'selecionadas' || leiturasTab === 'arquivo')
+                const notasArea = (tab === 'selecionadas' || tab === 'arquivo')
                     ? `<textarea class="leitura-notas" id="${notasId}" placeholder="Notas e anotações…" onblur="guardarNotas('${l.id}', this.value)">${l.notas || ''}</textarea>`
                     : '';
-                const classicoBadge = isClassico ? '<span class="badge-classico">Clássico</span>' : '';
+                const badgeTipo = isClassico
+                    ? '<span class="leitura-badge leitura-badge-classico">Clássico</span>'
+                    : isAtual
+                    ? '<span class="leitura-badge leitura-badge-atual">Atual</span>'
+                    : '<span class="leitura-badge leitura-badge-contemporaneo">Contemporâneo</span>';
                 card.innerHTML = `
-                    <div class="leitura-titulo">${classicoBadge}${l.titulo}</div>
+                    <div class="leitura-titulo">${badgeTipo}${l.titulo}</div>
                     <div class="leitura-meta">
                         ${l.autores && l.autores.length ? l.autores.slice(0,3).join(', ') + (l.autores.length > 3 ? ' et al.' : '') : ''}
                         ${l.ano ? '· ' + l.ano : ''}
@@ -1093,12 +1135,12 @@
                     </div>
                     ${l.analise_relevancia
                         ? '<div class="leitura-analise">' + l.analise_relevancia + '</div>'
-                        : (leiturasTab === 'sugeridas' ? `<div><button class="leitura-btn leitura-btn-saltar" style="font-size:10px;margin-bottom:8px" onclick="analisarLeitura('${l.id}', this)">✦ Analisar relevância</button><div class="leitura-analise" id="analise-${l.id}" style="display:none"></div></div>` : '')}
+                        : (tab === 'sugeridas' ? `<div><button class="leitura-btn leitura-btn-saltar" style="font-size:10px;margin-bottom:8px" onclick="analisarLeitura('${l.id}', this)">✦ Analisar relevância</button><div class="leitura-analise" id="analise-${l.id}" style="display:none"></div></div>` : '')}
                     ${links.length ? '<div class="leitura-links">' + links.join('') + '</div>' : ''}
                     <div class="leitura-btns">${btns}</div>
                     ${notasArea}`;
-                list.appendChild(card);
-            });
+                return card;
+            }
         }
         window.buscarLeituras = async function() {
             if (!leiturasActivaSondaId) return;
