@@ -1,5 +1,4 @@
-// Busca papers no OpenAlex — gratuito, sem limites, resposta rápida.
-// A análise de relevância é feita separadamente por /api/leituras-analisar.
+// Busca papers no OpenAlex e ordena por relevância (call + trabalho do Miguel) via Claude Haiku.
 
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -55,8 +54,55 @@ export default async function handler(req, res) {
       };
     });
 
-    res.status(200).json({ ok: true, papers: resultados });
+    // Ordenar por relevância com Claude (uma única chamada)
+    const ordenados = await ordenarPorRelevancia(resultados, sonda);
+    res.status(200).json({ ok: true, papers: ordenados });
   } catch (e) {
     res.status(500).json({ erro: String(e.message || e) });
+  }
+}
+
+const PERFIL = `Fotógrafo e doutorando FBAUL. Trabalho: fotografia artística, imagens interiores, corpo, CST (Corpo Sujeito Território), teoria da imagem, Flusser, visualidade contemporânea.`;
+
+async function ordenarPorRelevancia(papers, sonda) {
+  try {
+    const lista = papers.map((p, i) =>
+      `${i}:"${p.titulo}" (${p.ano||'?'}) - ${(p.resumo||'').slice(0,150)}`
+    ).join('\n');
+
+    const prompt = `Perfil: ${PERFIL}
+Call: "${sonda.titulo}" — áreas: ${(sonda.areas||[]).join(', ')}
+
+Papers (índice:título - resumo):
+${lista}
+
+Pontua cada paper de 0-10 por relevância para este perfil + call.
+Responde APENAS com JSON compacto: [{"i":0,"s":8},{"i":1,"s":3},...] — um objecto por paper, sem mais texto.`;
+
+    const resp = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "x-api-key": process.env.ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 300,
+        messages: [{ role: "user", content: prompt }],
+      }),
+    });
+    const data = await resp.json();
+    const text = data.content?.[0]?.text || "[]";
+    const match = text.match(/\[[\s\S]*?\]/);
+    const scores = match ? JSON.parse(match[0]) : [];
+
+    // Adicionar score a cada paper e ordenar
+    scores.forEach(({ i, s }) => { if (papers[i]) papers[i].relevancia = s; });
+    return papers
+      .map(p => ({ ...p, relevancia: p.relevancia ?? 0 }))
+      .sort((a, b) => b.relevancia - a.relevancia);
+  } catch {
+    return papers; // se falhar, devolve na ordem original
   }
 }
