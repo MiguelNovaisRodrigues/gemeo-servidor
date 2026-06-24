@@ -18,6 +18,7 @@
             --color-produtos: #5a6b5d;
             --color-sondas: #b86e00;
             --color-leituras: #2c6fad;
+            --color-administrativo: #6b5b95;
         }
         body, html {
             margin: 0; padding: 0; width: 100%; height: 100vh;
@@ -60,8 +61,43 @@
         .cluster-canvas.linking { background: #f7f5f0; }
         .link-banner { position: absolute; top: 18px; left: 50%; transform: translateX(-50%); background: var(--text-main); color: #fff; padding: 8px 18px; font-size: 11px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; z-index: 20; display: none; border-radius: 2px; }
         .cluster-canvas.linking .link-banner { display: block; }
-        .editor-panel { width: 0px; height: 100%; background: var(--bg-sidebar); border-left: 0 solid var(--border-fine); transition: width 0.4s cubic-bezier(0.25, 1, 0.5, 1); display: flex; flex-direction: column; box-sizing: border-box; position: relative; z-index: 5; overflow: hidden; flex-shrink: 0; }
-        .editor-panel.open { width: 580px; border-left: 1px solid var(--border-fine); }
+        .editor-panel { width: 380px; height: 100%; background: var(--bg-sidebar); border-left: 1px solid var(--border-fine); display: flex; flex-direction: column; box-sizing: border-box; position: relative; z-index: 5; overflow: hidden; flex-shrink: 0; }
+        /* Cockpit */
+        .cockpit-header { height: 60px; border-bottom: 1px solid var(--border-fine); display: flex; align-items: center; justify-content: space-between; padding: 0 20px; flex-shrink: 0; }
+        .cockpit-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; }
+        .cockpit-add { padding: 10px 20px; border-bottom: 1px solid var(--border-fine); flex-shrink: 0; }
+        .cockpit-add-input { width: 100%; box-sizing: border-box; padding: 7px 10px; font-size: 12px; border: 1px solid var(--border-fine); font-family: inherit; outline: none; border-radius: 2px; background: #fafafa; }
+        .cockpit-add-input:focus { border-color: var(--text-main); background: #fff; }
+        .cockpit-content { overflow-y: auto; flex-grow: 1; padding: 8px 0 20px; }
+        .cockpit-sec-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; padding: 12px 20px 4px; display: flex; align-items: center; gap: 8px; }
+        .cockpit-sec-label::after { content: ''; flex: 1; height: 1px; background: var(--border-fine); }
+        .cockpit-sec-label.urgente { color: #9e2a2b; }
+        .cockpit-sec-label.urgente::after { background: #f0b8b8; }
+        .cockpit-sec-label.semana { color: #b86e00; }
+        .cockpit-sec-label.semana::after { background: #f0d8b0; }
+        .cockpit-sec-label.normal { color: var(--text-muted); }
+        .cockpit-item { display: flex; align-items: flex-start; padding: 7px 20px; cursor: pointer; transition: background 0.1s; gap: 8px; }
+        .cockpit-item:hover { background: #f5f5f7; }
+        .cockpit-item-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; margin-top: 4px; }
+        .cockpit-item-body { flex: 1; min-width: 0; }
+        .cockpit-item-label { font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.4; }
+        .cockpit-item-row { display: flex; align-items: center; gap: 6px; margin-top: 3px; }
+        .cockpit-item-bar { height: 2px; flex: 1; background: #e5e5e5; border-radius: 1px; overflow: hidden; }
+        .cockpit-item-bar-fill { height: 100%; border-radius: 1px; }
+        .cockpit-badge { font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 2px; white-space: nowrap; flex-shrink: 0; }
+        .cockpit-badge-urgente { background: #fde8e8; color: #9e2a2b; }
+        .cockpit-badge-semana { background: #fdf0de; color: #b86e00; }
+        .cockpit-badge-ok { background: #e8f5ec; color: #2a6b3a; }
+        .cockpit-badge-leitura { background: #e8f1fb; color: #2c6fad; border: 1px solid #aac8ef; }
+        .cockpit-badge-sonda { background: #fdf0de; color: #b86e00; border: 1px solid #e8c87a; }
+        .cockpit-go { font-size: 13px; color: var(--text-muted); flex-shrink: 0; margin-top: 2px; opacity: 0; transition: opacity 0.1s; }
+        .cockpit-item:hover .cockpit-go { opacity: 1; }
+        .cockpit-empty { font-size: 11px; color: var(--text-muted); font-style: italic; padding: 4px 20px 8px; }
+        /* node-status-bar no topo do editor */
+        .node-status-bar { padding: 14px 0 16px; margin-bottom: 16px; border-bottom: 1px solid var(--border-fine); flex-shrink: 0; }
+        .node-status-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+        .node-status-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); flex: 1; }
+        .node-status-val { font-size: 11px; font-weight: 700; }
         .silo-panel {
             width: 0px; height: 100%; background: var(--bg-sidebar);
             border-right: 0 solid var(--border-fine);
@@ -320,42 +356,62 @@
             <div class="link-banner" id="link-banner">Modo ligação · clica em dois nós · Esc para sair</div>
         </div>
         <div class="editor-panel" id="editor-zone">
-            <div class="editor-header">
-                <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;" id="silo-indicator">FILA ATIVA</div>
-                <button class="btn-close" onclick="closeEditor()">Fechar</button>
+            <!-- ── COCKPIT (default) ───────────────────────────── -->
+            <div id="cockpit-view" style="display:flex;flex-direction:column;height:100%;">
+                <div class="cockpit-header">
+                    <span class="cockpit-title">⬡ Situação</span>
+                    <button class="action-btn" style="font-size:10px;padding:4px 10px" onclick="openNewNode()">+ Novo nó</button>
+                </div>
+                <div class="cockpit-add">
+                    <input class="cockpit-add-input" id="cockpit-quick-add" placeholder="Tarefa rápida… (Enter para criar)" onkeydown="quickAddNode(event)">
+                </div>
+                <div class="cockpit-content" id="cockpit-content"></div>
             </div>
-            <div class="editor-content">
-                <input type="text" class="doc-title" id="editor-title" placeholder="Título do nó">
-                <div class="fmt-bar">
-                    <button class="fmt-btn b" title="Negrito" onmousedown="fmt(event,'bold')">B</button>
-                    <button class="fmt-btn i" title="Itálico" onmousedown="fmt(event,'italic')">I</button>
-                    <button class="fmt-btn h" title="Título" onmousedown="fmt(event,'formatBlock','h3')">H</button>
-                    <button class="fmt-btn ul" title="Lista" onmousedown="fmt(event,'insertUnorderedList')">&#8226;</button>
+            <!-- ── EDITOR (shown on node click) ───────────────── -->
+            <div id="editor-view" style="display:none;flex-direction:column;height:100%;">
+                <div class="editor-header">
+                    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;" id="silo-indicator">FILA ATIVA</div>
+                    <button class="btn-close" onclick="closeEditor()">← Situação</button>
                 </div>
-                <div class="doc-body" contenteditable="true" id="editor-body"></div>
-                <div class="block collapsed" id="block-tags">
-                    <div class="block-head" onclick="toggleBlock('block-tags')"><span class="section-label">Etiquetas</span><span class="block-toggle">&#9662;</span></div>
-                    <div class="block-body"><div id="tags-area"></div></div>
-                </div>
-                <div class="block collapsed" id="block-inter">
-                    <div class="block-head" onclick="toggleBlock('block-inter')"><span class="section-label">Intersecções</span><span class="block-toggle">&#9662;</span></div>
-                    <div class="block-body"><div id="inter-area"></div></div>
-                </div>
-                <div class="block collapsed" id="block-meta">
-                    <div class="block-head" onclick="toggleBlock('block-meta')"><span class="section-label">Metadados</span><span class="block-toggle">&#9662;</span></div>
-                    <div class="block-body">
-                        <div class="meta-row"><span class="meta-label">Silo de origem</span><span class="meta-value" id="meta-parent"></span></div>
-                        <div class="meta-row"><span class="meta-label">Natureza</span><span class="meta-value" id="meta-origin"></span></div>
-                        <div class="meta-row"><span class="meta-label">Estatuto de dados</span><span class="meta-value" style="color: var(--text-muted);">Soberania fechada</span></div>
-                        <div class="progresso-section">
-                            <div class="progresso-label"><span>Progresso</span><span id="progresso-val">—</span></div>
-                            <input type="range" class="progresso-slider" id="progresso-input" min="0" max="100" step="5" value="0" oninput="updateProgresso(this.value)" onchange="saveProgresso(this.value)">
-                            <div class="progresso-label" style="margin-top:10px"><span>Prazo</span><span id="prazo-status"></span></div>
-                            <input type="date" class="prazo-input" id="prazo-input" onchange="savePrazo(this.value)">
+                <div class="editor-content">
+                    <!-- PROGRESSO + PRAZO VISÍVEIS NO TOPO -->
+                    <div class="node-status-bar" id="node-status-bar">
+                        <div class="node-status-row">
+                            <span class="node-status-label">Progresso</span>
+                            <span class="node-status-val" id="progresso-val">—</span>
+                            <span id="prazo-status" style="font-size:11px;font-weight:700;margin-left:8px;"></span>
+                        </div>
+                        <input type="range" class="progresso-slider" id="progresso-input" min="0" max="100" step="5" value="0" oninput="updateProgresso(this.value)" onchange="saveProgresso(this.value)">
+                        <div class="node-status-row" style="margin-top:8px;">
+                            <span class="node-status-label">Prazo</span>
+                            <input type="date" class="prazo-input" id="prazo-input" onchange="savePrazo(this.value)" style="flex:1;margin:0;font-size:11px;padding:4px 7px;">
                         </div>
                     </div>
+                    <input type="text" class="doc-title" id="editor-title" placeholder="Título do nó">
+                    <div class="fmt-bar">
+                        <button class="fmt-btn b" title="Negrito" onmousedown="fmt(event,'bold')">B</button>
+                        <button class="fmt-btn i" title="Itálico" onmousedown="fmt(event,'italic')">I</button>
+                        <button class="fmt-btn h" title="Título" onmousedown="fmt(event,'formatBlock','h3')">H</button>
+                        <button class="fmt-btn ul" title="Lista" onmousedown="fmt(event,'insertUnorderedList')">&#8226;</button>
+                    </div>
+                    <div class="doc-body" contenteditable="true" id="editor-body"></div>
+                    <div class="block collapsed" id="block-tags">
+                        <div class="block-head" onclick="toggleBlock('block-tags')"><span class="section-label">Etiquetas</span><span class="block-toggle">&#9662;</span></div>
+                        <div class="block-body"><div id="tags-area"></div></div>
+                    </div>
+                    <div class="block collapsed" id="block-inter">
+                        <div class="block-head" onclick="toggleBlock('block-inter')"><span class="section-label">Intersecções</span><span class="block-toggle">&#9662;</span></div>
+                        <div class="block-body"><div id="inter-area"></div></div>
+                    </div>
+                    <div class="block collapsed" id="block-meta">
+                        <div class="block-head" onclick="toggleBlock('block-meta')"><span class="section-label">Metadados</span><span class="block-toggle">&#9662;</span></div>
+                        <div class="block-body">
+                            <div class="meta-row"><span class="meta-label">Silo</span><span class="meta-value" id="meta-parent"></span></div>
+                            <div class="meta-row"><span class="meta-label">Natureza</span><span class="meta-value" id="meta-origin"></span></div>
+                        </div>
+                    </div>
+                    <button class="btn-del" onclick="deleteCurrentNode()">Apagar nó</button>
                 </div>
-                <button class="btn-del" onclick="deleteCurrentNode()">Apagar nó</button>
             </div>
         </div>
         <div class="dialog-back" id="dialog-back">
@@ -427,12 +483,13 @@
     </div>
     <script>
     window.addEventListener('DOMContentLoaded', () => {
-        const SIDEBAR = 240, PANEL = 580, STORE_KEY = "gemeo_v2";
+        const SIDEBAR = 240, PANEL = 380, STORE_KEY = "gemeo_v2";
         const SILOS = [
-            { id: "escrita",   label: "1. Escrita",            color: "var(--color-escrita)" },
-            { id: "aulas",     label: "2. Aulas",              color: "var(--color-aulas)" },
-            { id: "cst",       label: "3. Trabalho Artístico", color: "var(--color-cst)" },
-            { id: "produtos",  label: "4. Produtos",           color: "var(--color-produtos)" }
+            { id: "escrita",        label: "1. Escrita",            color: "var(--color-escrita)" },
+            { id: "aulas",          label: "2. Aulas",              color: "var(--color-aulas)" },
+            { id: "cst",            label: "3. Trabalho Artístico", color: "var(--color-cst)" },
+            { id: "produtos",       label: "4. Produtos",           color: "var(--color-produtos)" },
+            { id: "administrativo", label: "5. Administrativo",     color: "var(--color-administrativo)" }
         ];
         const siloColor = id => {
             if (id === '__sonda__') return 'var(--color-sondas)';
@@ -836,8 +893,113 @@
         }
 
         function coexistOK() {
-            return window.innerWidth - SIDEBAR - 420 - 580 >= 280;
+            return window.innerWidth - SIDEBAR - 420 - 380 >= 280;
         }
+
+        // ── COCKPIT ───────────────────────────────────────────────────────
+        function renderCockpit() {
+            const el = document.getElementById("cockpit-content");
+            if (!el) return;
+            const hoje = new Date();
+            const hojeStr = hoje.toISOString().slice(0, 10);
+            const nodes = data.nodes.filter(n => n.type === "leaf");
+
+            function daysTo(prazo) { return prazo ? Math.round((new Date(prazo) - hoje) / 86400000) : null; }
+            function barColor(silo) { return siloColor(silo).replace('var(', '').replace(')', ''); }
+            function cssColor(silo) { return getComputedStyle(document.documentElement).getPropertyValue(barColor(silo)).trim() || '#999'; }
+
+            function itemHTML(n, badgeHtml) {
+                const prog = n.progresso || 0;
+                const days = daysTo(n.prazo);
+                const badgeDays = days !== null ? (days < 0 ? `<span class="cockpit-badge cockpit-badge-urgente">Em atraso</span>` : days === 0 ? `<span class="cockpit-badge cockpit-badge-urgente">Hoje</span>` : days <= 7 ? `<span class="cockpit-badge cockpit-badge-urgente">${days}d</span>` : days <= 14 ? `<span class="cockpit-badge cockpit-badge-semana">${days}d</span>` : `<span class="cockpit-badge cockpit-badge-ok">${days}d</span>`) : '';
+                const dotColor = siloColor(n.silo);
+                const barFill = prog > 0 ? `<div class="cockpit-item-bar"><div class="cockpit-item-bar-fill" style="width:${prog}%;background:${cssColor(n.silo)}"></div></div>` : '';
+                return `<div class="cockpit-item" onclick="openEditor('${n.id}')">
+                    <div class="cockpit-item-dot" style="background:${dotColor}"></div>
+                    <div class="cockpit-item-body">
+                        <div class="cockpit-item-label">${n.label || '(sem título)'}</div>
+                        <div class="cockpit-item-row">${barFill}${badgeDays}${badgeHtml || ''}</div>
+                    </div>
+                    <div class="cockpit-go">→</div>
+                </div>`;
+            }
+
+            let html = '';
+
+            // 🔴 URGENTE (prazo ≤ 3 dias)
+            const urgente = nodes.filter(n => { const d = daysTo(n.prazo); return d !== null && d <= 3; }).sort((a,b) => daysTo(a.prazo) - daysTo(b.prazo));
+            if (urgente.length) {
+                html += `<div class="cockpit-sec-label urgente">🔴 Urgente</div>`;
+                urgente.forEach(n => { html += itemHTML(n); });
+            }
+
+            // 🟠 ESTA SEMANA (prazo 4-14 dias)
+            const semana = nodes.filter(n => { const d = daysTo(n.prazo); return d !== null && d > 3 && d <= 14; }).sort((a,b) => daysTo(a.prazo) - daysTo(b.prazo));
+            if (semana.length) {
+                html += `<div class="cockpit-sec-label semana">🟠 Esta semana</div>`;
+                semana.forEach(n => { html += itemHTML(n); });
+            }
+
+            // ⬡ EM CURSO (progresso > 0, sem prazo urgente)
+            const emCurso = nodes.filter(n => (n.progresso || 0) > 0 && (n.progresso || 0) < 100 && (!n.prazo || daysTo(n.prazo) > 14)).sort((a,b) => (b.progresso||0) - (a.progresso||0));
+            if (emCurso.length) {
+                html += `<div class="cockpit-sec-label normal">⬡ Em curso</div>`;
+                emCurso.forEach(n => { html += itemHTML(n); });
+            }
+
+            // 📋 CHAMADAS ATIVAS
+            const sondas = sondasData.filter(s => s.status !== 'enviada' && s.prazo >= hojeStr);
+            if (sondas.length) {
+                html += `<div class="cockpit-sec-label normal">📋 Chamadas</div>`;
+                sondas.forEach(s => {
+                    const d = daysTo(s.prazo);
+                    const badge = d !== null ? (d <= 7 ? `<span class="cockpit-badge cockpit-badge-urgente">${d}d</span>` : d <= 14 ? `<span class="cockpit-badge cockpit-badge-semana">${d}d</span>` : `<span class="cockpit-badge cockpit-badge-sonda">${d}d</span>`) : '';
+                    const leits = leiturasData.filter(l => l.sonda_id === s.id && l.status === 'selecionada').length;
+                    const leitBadge = leits > 0 ? `<span class="cockpit-badge cockpit-badge-leitura">📚 ${leits}</span>` : '';
+                    html += `<div class="cockpit-item" onclick="openLeiturasDialog('${s.id}')">
+                        <div class="cockpit-item-dot" style="background:var(--color-sondas)"></div>
+                        <div class="cockpit-item-body">
+                            <div class="cockpit-item-label">${s.titulo}</div>
+                            <div class="cockpit-item-row">${badge}${leitBadge}${s.revista ? `<span style="font-size:10px;color:var(--text-muted)">${s.revista}</span>` : ''}</div>
+                        </div>
+                        <div class="cockpit-go">→</div>
+                    </div>`;
+                });
+            }
+
+            // 📚 A LER
+            const aLer = leiturasData.filter(l => l.status === 'selecionada').slice(0, 6);
+            if (aLer.length) {
+                html += `<div class="cockpit-sec-label normal">📚 A ler</div>`;
+                aLer.forEach(l => {
+                    const autores = (l.autores || []).slice(0,1).map(a => a.split(' ').pop()).join('');
+                    const badge = l.tipo === 'classico' ? `<span class="cockpit-badge" style="background:#f5edd0;color:#7a5a00;border:1px solid #d4b96a">Clássico</span>` : l.tipo === 'atual' ? `<span class="cockpit-badge" style="background:#e8f4ec;color:#2a6b3a">Atual</span>` : '';
+                    html += `<div class="cockpit-item" onclick="openLeiturasDialog('${l.sonda_id || ''}')">
+                        <div class="cockpit-item-dot" style="background:var(--color-leituras)"></div>
+                        <div class="cockpit-item-body">
+                            <div class="cockpit-item-label">${l.titulo}</div>
+                            <div class="cockpit-item-row">${badge}${autores ? `<span style="font-size:10px;color:var(--text-muted)">${autores}${l.ano ? ' ' + l.ano : ''}</span>` : ''}</div>
+                        </div>
+                        <div class="cockpit-go">→</div>
+                    </div>`;
+                });
+            }
+
+            if (!html) html = `<div class="cockpit-empty" style="padding:24px 20px;font-size:12px;">Tudo limpo. Cria nós e define prazos para ver o teu estado aqui.</div>`;
+            el.innerHTML = html;
+        }
+
+        window.quickAddNode = function(e) {
+            if (e.key !== 'Enter') return;
+            const val = e.target.value.trim();
+            if (!val) return;
+            // Criar nó no primeiro silo (escrita por defeito)
+            const id = 'n' + Date.now();
+            data.nodes.push({ id, type: 'leaf', label: val, silo: 'escrita', content: '', origin: 'manuscrito', tags: { cat:[], kw:[], free:[] } });
+            save(); render(); renderCockpit();
+            e.target.value = '';
+            openEditor(id);
+        };
         function availWidth() { return clusterZone.clientWidth || (window.innerWidth - SIDEBAR); }
 
         function openSiloPanel(silo) {
@@ -906,7 +1068,7 @@
             const n = nodeById(id);
             document.getElementById("editor-title").value = n.label || "";
             document.getElementById("editor-body").innerHTML = n.content || "";
-            document.getElementById("silo-indicator").innerText = "Fila ativa: " + siloLabel(n.silo);
+            document.getElementById("silo-indicator").innerText = siloLabel(n.silo);
             document.getElementById("meta-parent").innerText = siloLabel(n.silo);
             document.getElementById("meta-origin").innerText = n.origin === "documento" ? "Documento (corpus / Drive)" : "Manuscrito (meu)";
             const prog = n.progresso ?? 0;
@@ -917,13 +1079,18 @@
             renderTags(n); renderInter(n);
             ["block-tags","block-inter","block-meta"].forEach(bid=>{ const b=document.getElementById(bid); if(b){ b.classList.add("collapsed"); const tg=b.querySelector(".block-toggle"); if(tg) tg.innerHTML="&#9662;"; } });
             if (!coexistOK()) { document.getElementById("silo-panel").classList.remove("open"); }
-            document.getElementById("editor-zone").classList.add("open");
-            render(); setTimeout(recenter, 420);
+            // Mostrar editor, esconder cockpit
+            document.getElementById("cockpit-view").style.display = "none";
+            document.getElementById("editor-view").style.display = "flex";
+            render(); setTimeout(recenter, 60);
         }
         function closeEditor() {
             activeNodeId = null;
-            document.getElementById("editor-zone").classList.remove("open");
-            render(); setTimeout(recenter, 420);
+            // Mostrar cockpit, esconder editor
+            document.getElementById("editor-view").style.display = "none";
+            document.getElementById("cockpit-view").style.display = "flex";
+            renderCockpit();
+            render(); setTimeout(recenter, 60);
         }
         document.getElementById("editor-title").addEventListener("input", e => { if(!activeNodeId) return; nodeById(activeNodeId).label=e.target.value; labelSel.text(d=>d.label); save(); });
         document.getElementById("editor-body").addEventListener("input", e => { if(!activeNodeId) return; nodeById(activeNodeId).content=sanitizeHTML(e.target.innerHTML); save(); });
@@ -933,13 +1100,13 @@
         window.saveProgresso = function(val) {
             if (!activeNodeId) return;
             nodeById(activeNodeId).progresso = parseInt(val);
-            save(); render();
+            save(); render(); renderCockpit();
         };
         window.savePrazo = function(val) {
             if (!activeNodeId) return;
             nodeById(activeNodeId).prazo = val || null;
             renderPrazoStatus(val);
-            save(); render();
+            save(); render(); renderCockpit();
         };
         function renderPrazoStatus(prazo) {
             const el = document.getElementById("prazo-status");
@@ -1092,7 +1259,7 @@
                 } else {
                     sondasData = [];
                 }
-                render();
+                render(); renderCockpit();
             } catch(e) { console.warn("Sondas indisponíveis:", e); }
         }
         async function saveSondas() {
@@ -1346,7 +1513,7 @@
                 } else {
                     leiturasData = [];
                 }
-                render();
+                render(); renderCockpit();
             } catch(e) { console.warn("Leituras indisponíveis:", e); }
         }
         async function saveLeituras() {
@@ -1584,7 +1751,7 @@
             if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) window.sendAI();
         });
 
-        buildSiloMenu(); buildSimulation(); render(); loadSondas(); loadLeituras();
+        buildSiloMenu(); buildSimulation(); render(); renderCockpit(); loadSondas(); loadLeituras();
         // Notificações de prazos
         setTimeout(() => {
             const urgentes = data.nodes.filter(n => n.prazo && Math.round((new Date(n.prazo) - new Date()) / 86400000) <= 7);
