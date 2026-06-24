@@ -1,61 +1,37 @@
-// Busca papers relevantes para uma sonda no Semantic Scholar.
-// Para cada paper: verifica se o link existe, depois pede ao Claude uma
-// análise de relevância para o trabalho do Miguel.
+// Busca papers no Semantic Scholar e analisa relevância com uma única chamada Claude.
+// Optimizado para caber no timeout de 10s do Vercel hobby.
 
 const SEMANTIC_SCHOLAR = "https://api.semanticscholar.org/graph/v1";
-const UNPAYWALL = "https://api.unpaywall.org/v2";
 
-// Perfil do trabalho do Miguel — usado pelo Claude para contextualizar
-const PERFIL_MIGUEL = `
-Miguel Rodrigues é fotógrafo e doutorando na FBAUL (Faculdade de Belas-Artes da Universidade de Lisboa).
-O seu trabalho centra-se em: fotografia como prática artística; imagens interiores e representação do corpo;
-trabalho artístico e escrita académica (teoria e prática); produção fotográfica (CST — Corpo, Sujeito, Território).
-Os seus silos de trabalho são: Escrita académica, Aulas, Trabalho Artístico (CST), Produtos.
-`;
+const PERFIL_MIGUEL = `Miguel Rodrigues é fotógrafo e doutorando na FBAUL. O seu trabalho centra-se em: fotografia como prática artística; imagens interiores e representação do corpo; teoria e prática da imagem; produção fotográfica (CST — Corpo, Sujeito, Território). Silos de trabalho: Escrita académica, Aulas, Trabalho Artístico, Produtos.`;
 
-async function buscarSemanticScholar(query, limite = 15) {
+async function buscarSemanticScholar(query, limite = 8) {
   const url = `${SEMANTIC_SCHOLAR}/paper/search?query=${encodeURIComponent(query)}&limit=${limite}&fields=title,authors,year,abstract,externalIds,openAccessPdf,venue,citationCount`;
-  const resp = await fetch(url, {
-    headers: { "Accept": "application/json" }
-  });
-  if (!resp.ok) throw new Error(`Semantic Scholar erro: ${resp.status}`);
+  const resp = await fetch(url, { headers: { Accept: "application/json" } });
+  if (!resp.ok) throw new Error(`Semantic Scholar ${resp.status}`);
   const data = await resp.json();
   return data.data || [];
 }
 
-async function verificarLinkOpenAccess(doi) {
-  if (!doi) return null;
-  try {
-    const resp = await fetch(`${UNPAYWALL}/${encodeURIComponent(doi)}?email=gemeo@miguelrodrigues.pt`);
-    if (!resp.ok) return null;
-    const data = await resp.json();
-    if (data.best_oa_location && data.best_oa_location.url_for_pdf) {
-      return data.best_oa_location.url_for_pdf;
-    }
-    if (data.best_oa_location && data.best_oa_location.url) {
-      return data.best_oa_location.url;
-    }
-    return null;
-  } catch { return null; }
-}
+async function analisarTodos(papers, sonda) {
+  const lista = papers.map((p, i) =>
+    `[${i+1}] "${p.title}" (${p.year || '?'}, ${p.venue || '?'})\nResumo: ${(p.abstract || 'sem resumo').slice(0, 300)}`
+  ).join('\n\n');
 
-async function analisarRelevancia(paper, sonda) {
   const prompt = `${PERFIL_MIGUEL}
 
 CHAMADA PARA ARTIGO:
 Título: ${sonda.titulo}
-Revista: ${sonda.revista}
-Áreas: ${(sonda.areas || []).join(", ")}
-Descrição: ${sonda.descricao}
+Revista: ${sonda.revista || '?'}
+Áreas: ${(sonda.areas || []).join(', ')}
+Descrição: ${sonda.descricao || ''}
 
-PAPER A AVALIAR:
-Título: ${paper.title}
-Autores: ${(paper.authors || []).map(a => a.name).join(", ")}
-Ano: ${paper.year}
-Revista/Venue: ${paper.venue || "—"}
-Resumo: ${paper.abstract || "Sem resumo disponível"}
+PAPERS A AVALIAR:
+${lista}
 
-Avalia em 3-4 frases concisas: (1) de que trata este paper; (2) que ligações tem ao trabalho do Miguel e à chamada; (3) porque pode ser útil para escrever este artigo. Sê específico e honesto — se a ligação for fraca, diz isso.`;
+Para cada paper, responde APENAS com JSON neste formato exato (array com ${papers.length} objectos):
+[{"n":1,"analise":"2-3 frases sobre relevância para o trabalho do Miguel e esta chamada"},{"n":2,...}]
+Sê honesto — se a ligação for fraca, diz isso. Responde APENAS com o JSON, sem mais texto.`;
 
   const resp = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
@@ -66,12 +42,19 @@ Avalia em 3-4 frases concisas: (1) de que trata este paper; (2) que ligações t
     },
     body: JSON.stringify({
       model: "claude-haiku-4-5-20251001",
-      max_tokens: 300,
+      max_tokens: 1200,
       messages: [{ role: "user", content: prompt }],
     }),
   });
   const data = await resp.json();
-  return data.content?.[0]?.text || "Análise indisponível.";
+  const text = data.content?.[0]?.text || "[]";
+  try {
+    return JSON.parse(text);
+  } catch {
+    // tentar extrair JSON do texto
+    const match = text.match(/\[[\s\S]*\]/);
+    return match ? JSON.parse(match[0]) : [];
+  }
 }
 
 export default async function handler(req, res) {
@@ -83,23 +66,21 @@ export default async function handler(req, res) {
 
   try {
     const sonda = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
-    if (!sonda || !sonda.titulo) {
-      res.status(400).json({ erro: "Sonda inválida — falta título" });
+    if (!sonda?.titulo) { res.status(400).json({ erro: "Falta título da sonda" }); return; }
+
+    const query = [sonda.titulo, ...(sonda.areas || [])].join(" ");
+    const papersRaw = await buscarSemanticScholar(query, 8);
+
+    if (papersRaw.length === 0) {
+      res.status(200).json({ ok: true, papers: [] });
       return;
     }
 
-    // Construir query de busca a partir da sonda
-    const query = [sonda.titulo, ...(sonda.areas || [])].join(" ");
-    const papersRaw = await buscarSemanticScholar(query);
+    const analises = await analisarTodos(papersRaw, sonda);
 
-    // Para cada paper: verificar link + analisar relevância (em paralelo, limite 8)
-    const papers = papersRaw.slice(0, 8);
-    const resultados = await Promise.all(papers.map(async (p) => {
+    const resultados = papersRaw.map((p, i) => {
       const doi = p.externalIds?.DOI || null;
-      const url_doi = doi ? `https://doi.org/${doi}` : null;
-      const url_open_access = p.openAccessPdf?.url || await verificarLinkOpenAccess(doi);
-      const analise = await analisarRelevancia(p, sonda);
-
+      const analiseObj = analises.find(a => a.n === i + 1);
       return {
         id: p.paperId || ("ss-" + Math.random().toString(36).slice(2, 8)),
         sonda_id: sonda.id,
@@ -108,17 +89,17 @@ export default async function handler(req, res) {
         ano: p.year,
         revista: p.venue || null,
         doi,
-        url_doi,
-        url_open_access,
+        url_doi: doi ? `https://doi.org/${doi}` : null,
+        url_open_access: p.openAccessPdf?.url || null,
         citacoes: p.citationCount || 0,
         resumo: p.abstract || null,
-        analise_relevancia: analise,
+        analise_relevancia: analiseObj?.analise || "Análise indisponível.",
         status: "sugerida",
         notas: "",
         data_criacao: new Date().toISOString().slice(0, 10),
         data_leitura: null,
       };
-    }));
+    });
 
     res.status(200).json({ ok: true, papers: resultados });
   } catch (e) {
