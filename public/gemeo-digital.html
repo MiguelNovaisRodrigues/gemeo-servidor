@@ -232,6 +232,30 @@
         .ai-response { margin-top: 16px; padding: 12px; background: #f5f5f7; font-size: 13px; line-height: 1.7; border-radius: 2px; white-space: pre-wrap; display: none; max-height: 280px; overflow-y: auto; }
         .ai-response.show { display: block; }
         .ai-loading { color: var(--text-muted); font-style: italic; }
+        /* Arquivo */
+        .arquivo-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border-fine); margin-bottom: 18px; flex-shrink: 0; }
+        .arquivo-tab { padding: 10px 18px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; cursor: pointer; color: var(--text-muted); border-bottom: 2px solid transparent; background: none; border-top: none; border-left: none; border-right: none; font-family: inherit; }
+        .arquivo-tab.active { color: var(--text-main); border-bottom-color: var(--text-main); }
+        .arquivo-sonda-item { padding: 18px 0; border-bottom: 1px solid var(--border-fine); }
+        .arquivo-sonda-item:last-child { border-bottom: none; }
+        .arquivo-sonda-titulo { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
+        .arquivo-sonda-meta { font-size: 11px; color: var(--text-muted); margin-bottom: 10px; }
+        .arquivo-sonda-badge { display: inline-block; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; padding: 2px 7px; border-radius: 2px; margin-right: 6px; background: #e8f5ec; color: #2a6b3a; border: 1px solid #8ec9a0; }
+        .arquivo-leituras-assoc { padding: 10px 12px; background: #fafafa; border-radius: 2px; margin-top: 6px; }
+        .arquivo-leituras-assoc-titulo { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-muted); margin-bottom: 8px; }
+        .arquivo-leit-linha { font-size: 12px; padding: 4px 0; border-bottom: 1px solid #f0f0f0; color: var(--text-main); }
+        .arquivo-leit-linha:last-child { border-bottom: none; }
+        .arquivo-leit-linha .lbadge { font-size: 9px; font-weight: 700; text-transform: uppercase; padding: 1px 5px; border-radius: 2px; margin-right: 5px; }
+        .arquivo-secao { margin: 20px 0 6px; }
+        .arquivo-secao-titulo { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); display: flex; align-items: center; gap: 10px; }
+        .arquivo-secao-titulo::after { content: ''; flex: 1; height: 1px; background: var(--border-fine); }
+        .arquivo-leit-card { padding: 14px 0; border-bottom: 1px solid var(--border-fine); }
+        .arquivo-leit-card:last-child { border-bottom: none; }
+        .arquivo-leit-card-titulo { font-size: 13px; font-weight: 600; margin-bottom: 4px; line-height: 1.4; }
+        .arquivo-leit-card-meta { font-size: 11px; color: var(--text-muted); margin-bottom: 6px; }
+        .arquivo-leit-card-analise { font-size: 12px; line-height: 1.6; color: #444; padding: 7px 10px; background: #f5f5f7; border-radius: 2px; margin-bottom: 6px; }
+        .arquivo-leit-card-notas { font-size: 12px; line-height: 1.6; color: #555; padding: 7px 10px; background: #fffbf0; border-left: 2px solid #d4b96a; border-radius: 0 2px 2px 0; }
+        .arquivo-empty { font-size: 13px; color: var(--text-muted); font-style: italic; text-align: center; padding: 40px 0; }
         /* Toast */
         .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--text-main); color: #fff; padding: 10px 20px; font-size: 12px; font-weight: 500; border-radius: 3px; z-index: 200; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
         .toast.show { opacity: 1; }
@@ -254,6 +278,7 @@
                     <button class="action-btn" onclick="openNewNode()"><span class="ic">+</span> Novo nó</button>
                     <button class="action-btn" id="link-btn" onclick="toggleLinkMode()"><span class="ic">&#10230;</span> Ligar nós</button>
                     <button class="action-btn" onclick="openAI()"><span class="ic">✦</span> Perguntar à IA</button>
+                    <button class="action-btn" onclick="openArquivo()"><span class="ic">📦</span> Arquivo Histórico</button>
                     <div class="action-row">
                         <button class="action-btn" onclick="exportData()"><span class="ic">&#8615;</span> Exportar</button>
                         <button class="action-btn" onclick="document.getElementById('import-file').click()"><span class="ic">&#8613;</span> Importar</button>
@@ -354,6 +379,19 @@
                     <button class="leituras-tab" onclick="setLeiturasTab('arquivo')">Arquivo</button>
                 </div>
                 <div id="leituras-list" style="overflow-y: auto; flex-grow: 1;"></div>
+            </div>
+        </div>
+        <div class="dialog-back" id="arquivo-dialog-back">
+            <div class="dialog" style="width: 700px; max-height: 85vh; overflow: hidden; display: flex; flex-direction: column; padding: 28px; box-sizing: border-box;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-shrink: 0;">
+                    <h3 style="margin: 0;">📦 Arquivo Histórico</h3>
+                    <button class="btn-close" onclick="closeArquivo()">Fechar</button>
+                </div>
+                <div class="arquivo-tabs" id="arquivo-tabs">
+                    <button class="arquivo-tab active" onclick="setArquivoTab('sondas')">Chamadas Enviadas</button>
+                    <button class="arquivo-tab" onclick="setArquivoTab('leituras')">Leituras</button>
+                </div>
+                <div id="arquivo-list" style="overflow-y: auto; flex-grow: 1;"></div>
             </div>
         </div>
         <div class="dialog-back" id="ai-dialog-back">
@@ -1040,6 +1078,119 @@
         window.closeSondasDialog = function() {
             document.getElementById("sondas-dialog-back").classList.remove("show");
         };
+
+        // ── ARQUIVO HISTÓRICO ──────────────────────────────────────────
+        let arquivoTab = 'sondas';
+        window.openArquivo = function() {
+            arquivoTab = 'sondas';
+            renderArquivoDialog();
+            document.getElementById("arquivo-dialog-back").classList.add("show");
+        };
+        window.closeArquivo = function() {
+            document.getElementById("arquivo-dialog-back").classList.remove("show");
+        };
+        window.setArquivoTab = function(tab) {
+            arquivoTab = tab;
+            document.querySelectorAll(".arquivo-tab").forEach((b, i) => {
+                b.classList.toggle("active", (i === 0 && tab === 'sondas') || (i === 1 && tab === 'leituras'));
+            });
+            renderArquivoDialog();
+        };
+        function renderArquivoDialog() {
+            const list = document.getElementById("arquivo-list");
+            if (arquivoTab === 'sondas') renderArquivoSondas(list);
+            else renderArquivoLeituras(list);
+        }
+        function renderArquivoSondas(list) {
+            const enviadas = sondasData.filter(s => s.status === 'enviada');
+            if (enviadas.length === 0) {
+                list.innerHTML = '<div class="arquivo-empty">Nenhuma chamada enviada ainda.</div>';
+                return;
+            }
+            list.innerHTML = '';
+            // Ordenar por data (mais recente primeiro)
+            [...enviadas].sort((a, b) => (b.prazo || '').localeCompare(a.prazo || '')).forEach(s => {
+                const leitAssoc = leiturasData.filter(l => l.sonda_id === s.id);
+                const leitLidas = leitAssoc.filter(l => l.status === 'lida');
+                const leitSel = leitAssoc.filter(l => l.status === 'selecionada');
+                let leituraHtml = '';
+                if (leitAssoc.length > 0) {
+                    const linhas = leitAssoc.map(l => {
+                        const badgeColor = l.tipo === 'classico' ? 'background:#f5edd0;color:#7a5a00;border:1px solid #d4b96a'
+                            : l.tipo === 'atual' ? 'background:#e8f4ec;color:#2a6b3a;border:1px solid #8ec9a0'
+                            : 'background:#e8f1fb;color:#2c6fad;border:1px solid #aac8ef';
+                        const badgeLabel = l.tipo === 'classico' ? 'Clássico' : l.tipo === 'atual' ? 'Atual' : 'Contemp.';
+                        const statusIcon = l.status === 'lida' ? ' ✓' : l.status === 'selecionada' ? ' ·' : '';
+                        const autores = l.autores?.slice(0,2).join(', ') || '';
+                        return `<div class="arquivo-leit-linha"><span class="lbadge" style="${badgeColor}">${badgeLabel}</span>${l.titulo}${autores ? ' — ' + autores : ''}${l.ano ? ' (' + l.ano + ')' : ''}${statusIcon}</div>`;
+                    }).join('');
+                    leituraHtml = `<div class="arquivo-leituras-assoc">
+                        <div class="arquivo-leituras-assoc-titulo">Leituras associadas (${leitLidas.length} lidas · ${leitSel.length} em curso)</div>
+                        ${linhas}
+                    </div>`;
+                }
+                const div = document.createElement('div');
+                div.className = 'arquivo-sonda-item';
+                div.innerHTML = `
+                    <div class="arquivo-sonda-titulo"><span class="arquivo-sonda-badge">Enviada</span>${s.titulo}</div>
+                    <div class="arquivo-sonda-meta">
+                        ${s.revista ? s.revista + ' · ' : ''}
+                        ${s.prazo ? 'Prazo ' + s.prazo : ''}
+                        ${s.areas?.length ? ' · ' + s.areas.slice(0,3).join(', ') : ''}
+                    </div>
+                    ${leituraHtml}`;
+                list.appendChild(div);
+            });
+        }
+        function renderArquivoLeituras(list) {
+            const lidas = leiturasData.filter(l => l.status === 'lida');
+            if (lidas.length === 0) {
+                list.innerHTML = '<div class="arquivo-empty">Nenhum texto lido ainda. Marca leituras como lidas para as ver aqui.</div>';
+                return;
+            }
+            list.innerHTML = '';
+            // Agrupar por sonda
+            const porSonda = {};
+            lidas.forEach(l => {
+                const chave = l.sonda_id || '__sem_sonda__';
+                if (!porSonda[chave]) porSonda[chave] = [];
+                porSonda[chave].push(l);
+            });
+            Object.entries(porSonda).forEach(([sondaId, items]) => {
+                const sonda = sondasData.find(s => s.id === sondaId);
+                const secTitulo = sonda ? sonda.titulo : 'Sem chamada associada';
+                const sec = document.createElement('div');
+                sec.className = 'arquivo-secao';
+                sec.innerHTML = `<div class="arquivo-secao-titulo">↳ ${secTitulo}</div>`;
+                list.appendChild(sec);
+                // Ordenar por data de leitura
+                [...items].sort((a, b) => (b.data_leitura || '').localeCompare(a.data_leitura || '')).forEach(l => {
+                    const card = document.createElement('div');
+                    card.className = 'arquivo-leit-card';
+                    const badgeColor = l.tipo === 'classico' ? 'background:#f5edd0;color:#7a5a00;border:1px solid #d4b96a'
+                        : l.tipo === 'atual' ? 'background:#e8f4ec;color:#2a6b3a;border:1px solid #8ec9a0'
+                        : 'background:#e8f1fb;color:#2c6fad;border:1px solid #aac8ef';
+                    const badgeLabel = l.tipo === 'classico' ? 'Clássico' : l.tipo === 'atual' ? 'Atual' : 'Contemporâneo';
+                    const links = [];
+                    if (l.url_doi) links.push(`<a class="leitura-link" href="${l.url_doi}" target="_blank">↗ DOI</a>`);
+                    if (l.url_open_access) links.push(`<a class="leitura-link" href="${l.url_open_access}" target="_blank">🔓 Open Access</a>`);
+                    card.innerHTML = `
+                        <div class="arquivo-leit-card-titulo">
+                            <span class="leitura-badge" style="${badgeColor}">${badgeLabel}</span>${l.titulo}
+                        </div>
+                        <div class="arquivo-leit-card-meta">
+                            ${l.autores?.slice(0,3).join(', ') || ''}${l.autores?.length > 3 ? ' et al.' : ''}
+                            ${l.ano ? '· ' + l.ano : ''}
+                            ${l.revista ? '· <em>' + l.revista + '</em>' : ''}
+                            ${l.data_leitura ? '· Lido em ' + l.data_leitura : ''}
+                        </div>
+                        ${l.analise_relevancia ? `<div class="arquivo-leit-card-analise">${l.analise_relevancia}</div>` : ''}
+                        ${l.notas ? `<div class="arquivo-leit-card-notas">📝 ${l.notas}</div>` : ''}
+                        ${links.length ? '<div class="leitura-links" style="margin-top:6px">' + links.join('') + '</div>' : ''}`;
+                    list.appendChild(card);
+                });
+            });
+        }
         function renderSondasDialog() {
             const list = document.getElementById("sondas-list");
             const hoje = new Date().toISOString().slice(0, 10);
