@@ -1,7 +1,5 @@
-// Busca papers no Semantic Scholar — resposta rápida, sem Claude.
+// Busca papers no OpenAlex — gratuito, sem limites, resposta rápida.
 // A análise de relevância é feita separadamente por /api/leituras-analisar.
-
-const SEMANTIC_SCHOLAR = "https://api.semanticscholar.org/graph/v1";
 
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -15,27 +13,40 @@ export default async function handler(req, res) {
     if (!sonda?.titulo) { res.status(400).json({ erro: "Falta título da sonda" }); return; }
 
     const query = [sonda.titulo, ...(sonda.areas || [])].join(" ");
-    const url = `${SEMANTIC_SCHOLAR}/paper/search?query=${encodeURIComponent(query)}&limit=10&fields=title,authors,year,abstract,externalIds,openAccessPdf,venue,citationCount`;
+    const url = `https://api.openalex.org/works?search=${encodeURIComponent(query)}&per-page=10&mailto=gemeo@miguelrodrigues.pt&select=id,title,authorships,publication_year,abstract_inverted_index,primary_location,cited_by_count,open_access,doi`;
 
     const resp = await fetch(url, { headers: { Accept: "application/json" } });
-    if (!resp.ok) throw new Error(`Semantic Scholar ${resp.status}`);
+    if (!resp.ok) throw new Error(`OpenAlex ${resp.status}`);
     const data = await resp.json();
-    const papersRaw = data.data || [];
+    const papersRaw = data.results || [];
 
     const resultados = papersRaw.map(p => {
-      const doi = p.externalIds?.DOI || null;
+      // Reconstruir abstract do índice invertido
+      let resumo = null;
+      if (p.abstract_inverted_index) {
+        try {
+          const words = {};
+          Object.entries(p.abstract_inverted_index).forEach(([word, positions]) => {
+            positions.forEach(pos => { words[pos] = word; });
+          });
+          resumo = Object.keys(words).sort((a,b) => a-b).map(k => words[k]).join(" ");
+        } catch {}
+      }
+      const doi = p.doi ? p.doi.replace("https://doi.org/", "") : null;
+      const venue = p.primary_location?.source?.display_name || null;
+      const autores = (p.authorships || []).slice(0, 5).map(a => a.author?.display_name).filter(Boolean);
       return {
-        id: p.paperId || ("ss-" + Math.random().toString(36).slice(2, 8)),
+        id: p.id?.replace("https://openalex.org/", "") || ("oa-" + Math.random().toString(36).slice(2, 8)),
         sonda_id: sonda.id,
         titulo: p.title,
-        autores: (p.authors || []).map(a => a.name),
-        ano: p.year,
-        revista: p.venue || null,
+        autores,
+        ano: p.publication_year,
+        revista: venue,
         doi,
         url_doi: doi ? `https://doi.org/${doi}` : null,
-        url_open_access: p.openAccessPdf?.url || null,
-        citacoes: p.citationCount || 0,
-        resumo: p.abstract || null,
+        url_open_access: p.open_access?.oa_url || null,
+        citacoes: p.cited_by_count || 0,
+        resumo,
         analise_relevancia: null,
         status: "sugerida",
         notas: "",

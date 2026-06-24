@@ -1117,8 +1117,10 @@
                     await saveLeituras();
                     render();
                     renderLeiturasDialog();
+                } else if (r.erro) {
+                    document.getElementById('leituras-list').innerHTML = '<div class="leituras-empty">Erro: ' + r.erro + '</div>';
                 } else {
-                    document.getElementById('leituras-list').innerHTML = '<div class="leituras-empty">Sem resultados. Tenta mais tarde.</div>';
+                    document.getElementById('leituras-list').innerHTML = '<div class="leituras-empty">Sem resultados para esta busca.</div>';
                 }
             } catch(e) {
                 document.getElementById('leituras-list').innerHTML = '<div class="leituras-empty">Erro: ' + e.message + '</div>';
