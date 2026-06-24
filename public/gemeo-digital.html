@@ -68,6 +68,10 @@
         .cockpit-add { padding: 10px 20px; border-bottom: 1px solid var(--border-fine); flex-shrink: 0; }
         .cockpit-add-input { width: 100%; box-sizing: border-box; padding: 7px 10px; font-size: 12px; border: 1px solid var(--border-fine); font-family: inherit; outline: none; border-radius: 2px; background: #fafafa; }
         .cockpit-add-input:focus { border-color: var(--text-main); background: #fff; }
+        .cockpit-sync-bar { padding: 8px 20px; border-top: 1px solid var(--border-fine); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; gap: 8px; }
+        .cockpit-sync-text { font-size: 10px; color: var(--text-muted); flex: 1; }
+        .cockpit-sync-btn { font-size: 10px; padding: 3px 8px; background: transparent; border: 1px solid var(--border-fine); cursor: pointer; border-radius: 2px; font-family: inherit; color: var(--text-muted); white-space: nowrap; }
+        .cockpit-sync-btn:hover { background: #f5f5f7; color: var(--text-main); }
         .cockpit-content { overflow-y: auto; flex-grow: 1; padding: 8px 0 20px; }
         .cockpit-sec-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; padding: 12px 20px 4px; display: flex; align-items: center; gap: 8px; }
         .cockpit-sec-label::after { content: ''; flex: 1; height: 1px; background: var(--border-fine); }
@@ -366,6 +370,10 @@
                     <input class="cockpit-add-input" id="cockpit-quick-add" placeholder="Tarefa rápida… (Enter para criar)" onkeydown="quickAddNode(event)">
                 </div>
                 <div class="cockpit-content" id="cockpit-content"></div>
+                <div class="cockpit-sync-bar">
+                    <span class="cockpit-sync-text" id="cockpit-sync-text">⟳ —</span>
+                    <button class="cockpit-sync-btn" onclick="showSyncInfo()">⟳ Sync</button>
+                </div>
             </div>
             <!-- ── EDITOR (shown on node click) ───────────────── -->
             <div id="editor-view" style="display:none;flex-direction:column;height:100%;">
@@ -590,8 +598,16 @@
         let activeNodeId = null, linkMode = false, linkFirst = null, focusSilo = null;
         function stripData() {
             return {
-                nodes: data.nodes.map(n => ({ id:n.id, type:n.type, silo:n.silo, label:n.label, origin:n.origin, tags:n.tags, content:n.content })),
-                links: data.links.map(l => ({ source: (l.source.id||l.source), target: (l.target.id||l.target), provenance: l.provenance }))
+                nodes: data.nodes.map(n => {
+                    const s = { id:n.id, type:n.type, silo:n.silo, label:n.label, origin:n.origin, tags:n.tags, content:n.content };
+                    if (n.progresso != null) s.progresso = n.progresso;
+                    if (n.prazo) s.prazo = n.prazo;
+                    if (n.origem_sync) s.origem_sync = n.origem_sync;
+                    return s;
+                }),
+                links: data.links.map(l => ({ source: (l.source.id||l.source), target: (l.target.id||l.target), provenance: l.provenance })),
+                ultima_sincronizacao: data.ultima_sincronizacao || null,
+                ultima_sincronizacao_fonte: data.ultima_sincronizacao_fonte || null
             };
         }
         let saveTimer = null, localState = "saved";
@@ -988,6 +1004,27 @@
             if (!html) html = `<div class="cockpit-empty" style="padding:24px 20px;font-size:12px;">Tudo limpo. Cria nós e define prazos para ver o teu estado aqui.</div>`;
             el.innerHTML = html;
         }
+
+        function updateSyncBar() {
+            const el = document.getElementById("cockpit-sync-text");
+            if (!el) return;
+            if (data.ultima_sincronizacao) {
+                const d = new Date(data.ultima_sincronizacao);
+                const diffMs = Date.now() - d.getTime();
+                const diffH = Math.floor(diffMs / 3600000);
+                const diffD = Math.floor(diffMs / 86400000);
+                const label = diffH < 1 ? 'agora' : diffH < 24 ? `há ${diffH}h` : diffD === 1 ? 'ontem' : `há ${diffD}d`;
+                const fonte = data.ultima_sincronizacao_fonte ? ` · ${data.ultima_sincronizacao_fonte}` : '';
+                el.textContent = `⟳ Sync ${label}${fonte}`;
+            } else {
+                el.textContent = '⟳ Nunca sincronizado';
+            }
+        }
+
+        window.showSyncInfo = function() {
+            const ul = data.ultima_sincronizacao ? new Date(data.ultima_sincronizacao).toLocaleString('pt-PT') : 'nunca';
+            alert(`Última sincronização: ${ul}\n\nO Gémeo sincroniza automaticamente cada manhã com o teu Calendário Google e Gmail.\n\nPara sincronizar agora: abre o Cowork e escreve "sincronizar Gémeo".`);
+        };
 
         window.quickAddNode = function(e) {
             if (e.key !== 'Enter') return;
@@ -1751,7 +1788,7 @@
             if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) window.sendAI();
         });
 
-        buildSiloMenu(); buildSimulation(); render(); renderCockpit(); loadSondas(); loadLeituras();
+        buildSiloMenu(); buildSimulation(); render(); renderCockpit(); updateSyncBar(); loadSondas(); loadLeituras();
         // Notificações de prazos
         setTimeout(() => {
             const urgentes = data.nodes.filter(n => n.prazo && Math.round((new Date(n.prazo) - new Date()) / 86400000) <= 7);
@@ -1786,7 +1823,7 @@
                         svg.selectAll("*").remove(); buildSimulation(); render(); closeEditor();
                         try { localStorage.setItem(STORE_KEY, JSON.stringify(remoto)); pushBackup(remoto); } catch(e){}
                     }
-                    driveState = "saved"; refreshSaveLabel();
+                    driveState = "saved"; refreshSaveLabel(); updateSyncBar();
                 } else {
                     await driveSave(stripData());
                 }
