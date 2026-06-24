@@ -15,7 +15,10 @@ export default async function handler(req, res) {
         res.status(200).json({ existe: false, dados: null });
         return;
       }
-      res.status(200).json({ existe: true, dados: JSON.parse(conteudo) });
+      const parsed = JSON.parse(conteudo);
+      // Normalizar: aceitar array directo ou { sondas: [...] }
+      const dados = Array.isArray(parsed) ? { sondas: parsed } : parsed;
+      res.status(200).json({ existe: true, dados });
       return;
     }
 
