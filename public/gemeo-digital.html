@@ -144,6 +144,7 @@
         .link.structural { stroke-opacity: 0.10; }
         .link.bridge { stroke: var(--color-cst); stroke-opacity: 0.55; }
         .link.suggested { stroke: var(--color-cst); stroke-opacity: 0.28; stroke-dasharray: 4 4; }
+        .link.leitura { stroke: var(--color-leituras); stroke-opacity: 0.30; stroke-dasharray: 2 3; }
         .link.dimmed { opacity: 0.28; }
         .node-text { font-size: 11px; font-weight: 500; fill: var(--text-main); pointer-events: none; transition: opacity 0.45s; }
         .node-text.dimmed { opacity: 0.38; }
@@ -542,13 +543,41 @@
             return data.nodes.filter(o => o.type==="leaf" && o.id!==nodeId && !linkExists(nodeId,o.id) && sharedTagCount(node,o)>0)
                 .map(o => ({ node:o, shared: sharedTagCount(node,o) })).sort((a,b)=>b.shared-a.shared);
         }
+        function leituraLabel(l) {
+            if (l.autores && l.autores.length > 0) {
+                const parts = l.autores[0].trim().split(' ');
+                const last = parts[parts.length - 1];
+                return last + (l.ano ? ' \'' + String(l.ano).slice(2) : '');
+            }
+            return (l.titulo || '').slice(0, 14);
+        }
+        function leituraRadius(l) {
+            const r = l.relevancia || 0;
+            return r >= 8 ? 10 : r >= 6 ? 8 : 6;
+        }
+        function leituraFill(l) {
+            if (l.tipo === 'classico') return '#c9a84c';
+            if (l.tipo === 'atual') return '#4a8f5a';
+            return 'var(--color-leituras)';
+        }
+        function leituraStroke(l) {
+            if (l.tipo === 'classico') return '#d4b96a';
+            if (l.tipo === 'atual') return '#5a9b6d';
+            return 'var(--color-leituras)';
+        }
         function nodesForSimulation() {
             const hoje = new Date().toISOString().slice(0, 10);
             const activeSondas = sondasData.filter(s => s.status !== 'enviada' && s.prazo >= hoje);
             const activeLeits = leiturasData.filter(l => l.status === 'selecionada' || l.status === 'lida');
             let nodes = [...data.nodes];
             if (activeSondas.length > 0) nodes = [...nodes, SONDA_NODE];
-            if (activeLeits.length > 0) nodes = [...nodes, LEITURAS_NODE];
+            activeLeits.forEach(l => nodes.push({
+                id: '__leit__' + l.id,
+                type: 'leitura',
+                silo: '__leituras__',
+                label: leituraLabel(l),
+                leitura_id: l.id,
+            }));
             return nodes;
         }
         function buildSimulation() {
@@ -585,19 +614,36 @@
                     if (n.id < s.node.id) suggSet.push({ source:n.id, target:s.node.id, suggested:true, shared:s.shared });
                 });
             });
-            const allLinks = data.links.concat(suggSet);
-            linkSel = svg.selectAll("line.link").data(allLinks, d => (d.source.id||d.source)+"-"+(d.target.id||d.target)+(d.suggested?"-s":""));
+            // Links sintéticos para nós de leitura
+            const leituraLinks = [];
+            allNodes.filter(n => n.type === 'leitura').forEach(ln => {
+                const l = leiturasData.find(x => x.id === ln.leitura_id);
+                if (!l) return;
+                if (sondasData.length > 0) leituraLinks.push({ source: ln.id, target: '__sonda__', provenance: 'structural', leitura: true });
+                if (l.relevancia_silos) {
+                    Object.entries(l.relevancia_silos).forEach(([silo, score]) => {
+                        if (score >= 5) {
+                            const center = data.nodes.find(n => n.type === 'center' && n.silo === silo);
+                            if (center) leituraLinks.push({ source: ln.id, target: center.id, leitura: true, weight: score });
+                        }
+                    });
+                }
+            });
+            const allLinks = data.links.concat(suggSet).concat(leituraLinks);
+            linkSel = svg.selectAll("line.link").data(allLinks, d => (d.source.id||d.source)+"-"+(d.target.id||d.target)+(d.suggested?"-s":"")+(d.leitura?"-l":""));
             linkSel.exit().remove();
             linkSel = linkSel.enter().append("line").merge(linkSel);
             linkSel
                 .attr("class", d => {
                     if (d.suggested) return "link suggested";
+                    if (d.leitura) return "link leitura";
                     if (d.provenance === "structural") return "link structural";
                     if (isBridge(d)) return "link bridge";
                     return "link";
                 })
                 .style("stroke-width", d => {
                     if (d.suggested) return Math.min(1 + d.shared*0.5, 3) + "px";
+                    if (d.leitura) return d.weight ? Math.min(0.8 + d.weight * 0.2, 3) + "px" : "1px";
                     if (d.provenance === "structural") return "1.5px";
                     return Math.min(1.5 + linkStrength(d)*1.1, 6) + "px";
                 })
@@ -612,7 +658,12 @@
             nodeSel = svg.selectAll("circle.node").data(allNodes, d=>d.id);
             nodeSel.exit().remove();
             const nodeEnter = nodeSel.enter().append("circle")
-                .attr("r", d => d.type==="center" ? 14 : d.type==="sonda" ? 12 : 7)
+                .attr("r", d => {
+                    if (d.type === "center") return 14;
+                    if (d.type === "sonda") return 12;
+                    if (d.type === "leitura") { const l = leiturasData.find(x => x.id === d.leitura_id); return leituraRadius(l || {}); }
+                    return 7;
+                })
                 .on("click", onNodeClick)
                 .on("mouseover", (e,d)=>onNodeHover(d.silo))
                 .on("mouseout", ()=>onNodeHover(null))
@@ -621,12 +672,33 @@
                     .on("drag", (e,d)=>{ d.fx=e.x; d.fy=e.y; })
                     .on("end", (e,d)=>{ if(!e.active) simulation.alphaTarget(0); d.fx=null; d.fy=null; }));
             nodeSel = nodeEnter.merge(nodeSel);
-            nodeSel.attr("class", d => d.type==="sonda" ? "node node-sonda" : (d.type==="center" ? "node node-center" : "node node-leaf") + (dimmedSilo(d.silo) ? " dimmed" : ""))
-                   .attr("fill", d => d.type==="sonda" ? 'var(--color-sondas)' : siloColor(d.silo))
-                   .attr("fill-opacity", d => d.type==="sonda" ? 0.15 : 1)
-                   .style("stroke", d => d.type==="sonda" ? "var(--color-sondas)" : d.id===activeNodeId ? "#111" : "#fff")
-                   .style("stroke-width", d => d.type==="sonda" ? "2px" : d.id===activeNodeId ? "3px" : (d.type==="center"?"2.5px":"2px"))
-                   .style("stroke-dasharray", d => d.type==="sonda" ? "5,3" : null);
+            nodeSel.attr("class", d => {
+                       if (d.type === "sonda") return "node node-sonda";
+                       if (d.type === "leitura") return "node node-leitura";
+                       if (d.type === "center") return "node node-center" + (dimmedSilo(d.silo) ? " dimmed" : "");
+                       return "node node-leaf" + (dimmedSilo(d.silo) ? " dimmed" : "");
+                   })
+                   .attr("fill", d => {
+                       if (d.type === "sonda") return 'var(--color-sondas)';
+                       if (d.type === "leitura") { const l = leiturasData.find(x => x.id === d.leitura_id); return leituraFill(l || {}); }
+                       return siloColor(d.silo);
+                   })
+                   .attr("fill-opacity", d => d.type === "sonda" ? 0.15 : d.type === "leitura" ? 0.85 : 1)
+                   .style("stroke", d => {
+                       if (d.type === "sonda") return "var(--color-sondas)";
+                       if (d.type === "leitura") { const l = leiturasData.find(x => x.id === d.leitura_id); return leituraStroke(l || {}); }
+                       return d.id === activeNodeId ? "#111" : "#fff";
+                   })
+                   .style("stroke-width", d => {
+                       if (d.type === "sonda") return "2px";
+                       if (d.type === "leitura") { const l = leiturasData.find(x => x.id === d.leitura_id); return l?.status === 'lida' ? "2.5px" : "1.5px"; }
+                       return d.id === activeNodeId ? "3px" : (d.type === "center" ? "2.5px" : "2px");
+                   })
+                   .style("stroke-dasharray", d => {
+                       if (d.type === "sonda") return "5,3";
+                       if (d.type === "leitura") { const l = leiturasData.find(x => x.id === d.leitura_id); return l?.status === 'selecionada' ? "3,2" : null; }
+                       return null;
+                   });
 
             labelSel = svg.selectAll("text.node-text").data(allNodes, d=>d.id);
             labelSel.exit().remove();
@@ -635,7 +707,7 @@
                 .text(d=>d.label);
 
             simulation.nodes(allNodes);
-            simulation.force("link").links(data.links);
+            simulation.force("link").links([...data.links, ...leituraLinks]);
             simulation.alpha(0.3).restart();
         }
         function setFocus(silo) {
@@ -713,6 +785,11 @@
             if (linkMode) { handleLinkClick(d); return; }
             if (d.type === "sonda") { openSondasDialog(); return; }
             if (d.type === "leituras") { openLeiturasDialog(null); return; }
+            if (d.type === "leitura") {
+                const l = leiturasData.find(x => x.id === d.leitura_id);
+                openLeiturasDialog(l?.sonda_id || null);
+                return;
+            }
             if (d.type === "leaf") openEditor(d.id);
         }
         function toggleLinkMode() {
@@ -1199,9 +1276,11 @@
                 });
                 const data = await r.json();
                 l.analise_relevancia = data.analise || 'Sem análise.';
+                if (data.relevancia_silos) l.relevancia_silos = data.relevancia_silos;
                 if (box) { box.textContent = l.analise_relevancia; }
                 btn.style.display = 'none';
                 saveLeituras();
+                render(); // actualizar grafo com novos links para silos
             } catch(e) {
                 if (box) { box.textContent = 'Erro: ' + e.message; }
                 btn.disabled = false; btn.textContent = '✦ Analisar relevância';
