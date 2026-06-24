@@ -11,13 +11,29 @@ export default async function handler(req, res) {
     const sonda = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
     if (!sonda?.titulo) { res.status(400).json({ erro: "Falta título da sonda" }); return; }
 
-    const query = [sonda.titulo, ...(sonda.areas || [])].join(" ");
-    const url = `https://api.openalex.org/works?search=${encodeURIComponent(query)}&per-page=10&mailto=gemeo@miguelrodrigues.pt&select=id,title,authorships,publication_year,abstract_inverted_index,primary_location,cited_by_count,open_access,doi`;
+    const fields = "id,title,authorships,publication_year,abstract_inverted_index,primary_location,cited_by_count,open_access,doi";
+    const baseUrl = `https://api.openalex.org/works?per-page=10&mailto=gemeo@miguelrodrigues.pt&select=${fields}`;
 
-    const resp = await fetch(url, { headers: { Accept: "application/json" } });
-    if (!resp.ok) throw new Error(`OpenAlex ${resp.status}`);
-    const data = await resp.json();
-    const papersRaw = data.results || [];
+    // Três queries: contemporânea, académica, e clássicos canónicos
+    const areasEn = (sonda.areas || []).join(" ");
+    const queries = [
+      sonda.titulo + " " + areasEn,                                                                          // título + áreas
+      areasEn + " photography visual art embodiment theory representation",                                  // académica inglês
+      areasEn + " Barthes Sontag Berger Benjamin Flusser Sekula Burgin Merleau-Ponty Butler photography",   // clássicos
+    ];
+
+    const resps = await Promise.all(queries.map(q =>
+      fetch(`${baseUrl}&search=${encodeURIComponent(q)}`, { headers: { Accept: "application/json" } })
+        .then(r => r.ok ? r.json() : { results: [] })
+        .catch(() => ({ results: [] }))
+    ));
+
+    // Juntar e desduplicar por ID
+    const seen = new Set();
+    const papersRaw = resps.flatMap(d => d.results || []).filter(p => {
+      if (!p.id || seen.has(p.id)) return false;
+      seen.add(p.id); return true;
+    }).slice(0, 16);
 
     const resultados = papersRaw.map(p => {
       // Reconstruir abstract do índice invertido
