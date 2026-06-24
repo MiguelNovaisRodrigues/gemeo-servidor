@@ -140,6 +140,18 @@
         .node-leaf { stroke: #ffffff; stroke-width: 2px; }
         .node.dimmed { opacity: 0.32; }
         .node.silo-hot { opacity: 1; }
+        /* Anel de progresso */
+        .progress-ring { fill: none; stroke-width: 3; pointer-events: none; transition: opacity 0.45s; stroke-linecap: round; }
+        .progress-ring.overdue { animation: pulse-ring 1.4s ease-in-out infinite; }
+        @keyframes pulse-ring { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
+        /* Progresso no editor */
+        .progresso-section { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border-fine); }
+        .progresso-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); margin-bottom: 6px; display: flex; justify-content: space-between; }
+        .progresso-slider { width: 100%; height: 4px; cursor: pointer; accent-color: var(--color-produtos); }
+        .prazo-input { width: 100%; box-sizing: border-box; padding: 6px 9px; font-size: 12px; border: 1px solid var(--border-fine); font-family: inherit; outline: none; border-radius: 2px; margin-top: 8px; }
+        .prazo-input:focus { border-color: var(--text-main); }
+        .prazo-urgente { color: #9e2a2b; font-weight: 700; }
+        .prazo-aviso { color: #b86e00; font-weight: 700; }
         .link { stroke: #111111; stroke-opacity: 0.16; transition: opacity 0.45s; }
         .link.structural { stroke-opacity: 0.10; }
         .link.bridge { stroke: var(--color-cst); stroke-opacity: 0.55; }
@@ -335,6 +347,12 @@
                         <div class="meta-row"><span class="meta-label">Silo de origem</span><span class="meta-value" id="meta-parent"></span></div>
                         <div class="meta-row"><span class="meta-label">Natureza</span><span class="meta-value" id="meta-origin"></span></div>
                         <div class="meta-row"><span class="meta-label">Estatuto de dados</span><span class="meta-value" style="color: var(--text-muted);">Soberania fechada</span></div>
+                        <div class="progresso-section">
+                            <div class="progresso-label"><span>Progresso</span><span id="progresso-val">—</span></div>
+                            <input type="range" class="progresso-slider" id="progresso-input" min="0" max="100" step="5" value="0" oninput="updateProgresso(this.value)" onchange="saveProgresso(this.value)">
+                            <div class="progresso-label" style="margin-top:10px"><span>Prazo</span><span id="prazo-status"></span></div>
+                            <input type="date" class="prazo-input" id="prazo-input" onchange="savePrazo(this.value)">
+                        </div>
                     </div>
                 </div>
                 <button class="btn-del" onclick="deleteCurrentNode()">Apagar nó</button>
@@ -561,7 +579,7 @@
         const clusterZone = document.getElementById("cluster-zone");
         let height = clusterZone.clientHeight || window.innerHeight;
         const svg = d3.select("#cluster-zone").append("svg").attr("width","100%").attr("height","100%");
-        let linkSel, nodeSel, labelSel, simulation;
+        let linkSel, nodeSel, labelSel, progressSel, simulation;
         function nodeById(id){ return data.nodes.find(n => n.id === id); }
         function sharedTagCount(a, b) {
             if (a.type !== "leaf" || b.type !== "leaf") return 0;
@@ -630,6 +648,25 @@
             linkSel.attr("x1",d=>d.source.x).attr("y1",d=>d.source.y).attr("x2",d=>d.target.x).attr("y2",d=>d.target.y);
             nodeSel.attr("cx",d=>d.x).attr("cy",d=>d.y);
             labelSel.attr("x",d=>d.x).attr("y",d=>d.y);
+            if (progressSel) progressSel.attr("cx",d=>d.x).attr("cy",d=>d.y);
+        }
+        function nodeBaseRadius(d) {
+            if (d.type === "center") return 14;
+            if (d.type === "sonda") return 12;
+            if (d.type === "leitura") { const l = leiturasData.find(x => x.id === d.leitura_id); return leituraRadius(l || {}); }
+            return 7;
+        }
+        function prazoColor(prazo) {
+            if (!prazo) return '#4a8f5a';
+            const days = Math.round((new Date(prazo) - new Date()) / 86400000);
+            if (days < 0)  return '#9e2a2b';
+            if (days <= 7) return '#cc3333';
+            if (days <= 14) return '#b86e00';
+            return '#4a8f5a';
+        }
+        function prazoOverdue(prazo) {
+            if (!prazo) return false;
+            return Math.round((new Date(prazo) - new Date()) / 86400000) < 0;
         }
         function isBridge(l) {
             const s = nodeById(l.source.id||l.source), t = nodeById(l.target.id||l.target);
@@ -737,6 +774,26 @@
                        if (d.type === "leitura") { const l = leiturasData.find(x => x.id === d.leitura_id); return l?.status === 'selecionada' ? "3,2" : null; }
                        return null;
                    });
+
+            // Anéis de progresso — nós com progresso > 0 ou prazo definido
+            const ringNodes = allNodes.filter(n => (n.progresso != null && n.progresso > 0) || n.prazo);
+            progressSel = svg.selectAll("circle.progress-ring").data(ringNodes, d => d.id + '-ring');
+            progressSel.exit().remove();
+            progressSel = progressSel.enter().append("circle").merge(progressSel)
+                .attr("class", d => "progress-ring" + (prazoOverdue(d.prazo) ? " overdue" : ""))
+                .attr("r", d => nodeBaseRadius(d) + 5)
+                .attr("stroke", d => prazoColor(d.prazo))
+                .attr("stroke-dasharray", d => {
+                    const r = nodeBaseRadius(d) + 5;
+                    const circ = 2 * Math.PI * r;
+                    const pct = (d.progresso || 0) / 100;
+                    return pct > 0 ? `${circ * pct} ${circ}` : `0 ${circ}`;
+                })
+                .attr("stroke-dashoffset", d => {
+                    const r = nodeBaseRadius(d) + 5;
+                    return -(2 * Math.PI * r / 4); // começa às 12h
+                })
+                .attr("cx", d => d.x || 0).attr("cy", d => d.y || 0);
 
             labelSel = svg.selectAll("text.node-text").data(allNodes, d=>d.id);
             labelSel.exit().remove();
@@ -852,6 +909,11 @@
             document.getElementById("silo-indicator").innerText = "Fila ativa: " + siloLabel(n.silo);
             document.getElementById("meta-parent").innerText = siloLabel(n.silo);
             document.getElementById("meta-origin").innerText = n.origin === "documento" ? "Documento (corpus / Drive)" : "Manuscrito (meu)";
+            const prog = n.progresso ?? 0;
+            document.getElementById("progresso-input").value = prog;
+            document.getElementById("progresso-val").textContent = prog > 0 ? prog + '%' : '—';
+            document.getElementById("prazo-input").value = n.prazo || '';
+            renderPrazoStatus(n.prazo || null);
             renderTags(n); renderInter(n);
             ["block-tags","block-inter","block-meta"].forEach(bid=>{ const b=document.getElementById(bid); if(b){ b.classList.add("collapsed"); const tg=b.querySelector(".block-toggle"); if(tg) tg.innerHTML="&#9662;"; } });
             if (!coexistOK()) { document.getElementById("silo-panel").classList.remove("open"); }
@@ -865,6 +927,30 @@
         }
         document.getElementById("editor-title").addEventListener("input", e => { if(!activeNodeId) return; nodeById(activeNodeId).label=e.target.value; labelSel.text(d=>d.label); save(); });
         document.getElementById("editor-body").addEventListener("input", e => { if(!activeNodeId) return; nodeById(activeNodeId).content=sanitizeHTML(e.target.innerHTML); save(); });
+        window.updateProgresso = function(val) {
+            document.getElementById("progresso-val").textContent = val + '%';
+        };
+        window.saveProgresso = function(val) {
+            if (!activeNodeId) return;
+            nodeById(activeNodeId).progresso = parseInt(val);
+            save(); render();
+        };
+        window.savePrazo = function(val) {
+            if (!activeNodeId) return;
+            nodeById(activeNodeId).prazo = val || null;
+            renderPrazoStatus(val);
+            save(); render();
+        };
+        function renderPrazoStatus(prazo) {
+            const el = document.getElementById("prazo-status");
+            if (!prazo) { el.textContent = ''; el.className = ''; return; }
+            const days = Math.round((new Date(prazo) - new Date()) / 86400000);
+            if (days < 0) { el.textContent = 'Em atraso!'; el.className = 'prazo-urgente'; }
+            else if (days === 0) { el.textContent = 'Hoje!'; el.className = 'prazo-urgente'; }
+            else if (days <= 7) { el.textContent = days + ' dias'; el.className = 'prazo-urgente'; }
+            else if (days <= 14) { el.textContent = days + ' dias'; el.className = 'prazo-aviso'; }
+            else { el.textContent = days + ' dias'; el.className = ''; }
+        }
         function sanitizeHTML(html) {
             const tmp = document.createElement("div"); tmp.innerHTML = html;
             const allowed = { B:1, STRONG:1, I:1, EM:1, H3:1, UL:1, OL:1, LI:1, BR:1, DIV:1, P:1 };
@@ -1499,6 +1585,20 @@
         });
 
         buildSiloMenu(); buildSimulation(); render(); loadSondas(); loadLeituras();
+        // Notificações de prazos
+        setTimeout(() => {
+            const urgentes = data.nodes.filter(n => n.prazo && Math.round((new Date(n.prazo) - new Date()) / 86400000) <= 7);
+            if (urgentes.length === 0) return;
+            if (!("Notification" in window)) return;
+            Notification.requestPermission().then(perm => {
+                if (perm !== 'granted') return;
+                urgentes.forEach(n => {
+                    const days = Math.round((new Date(n.prazo) - new Date()) / 86400000);
+                    const msg = days < 0 ? 'Em atraso!' : days === 0 ? 'Prazo hoje!' : `Prazo em ${days} dia${days !== 1 ? 's' : ''}`;
+                    new Notification(`⏳ ${n.label}`, { body: msg, icon: '/favicon.ico' });
+                });
+            });
+        }, 1500);
         document.getElementById("conjunto-btn").classList.add("armed");
         if (recoveredNote) {
             setSaveState("error", "Dados recuperados de cópia");
