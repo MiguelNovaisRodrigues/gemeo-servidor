@@ -441,10 +441,14 @@
             </div>
         </div>
         <div class="dialog-back" id="sondas-dialog-back">
-            <div class="dialog" style="width: 640px; max-height: 80vh; overflow: hidden; display: flex; flex-direction: column; padding: 28px; box-sizing: border-box;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; flex-shrink: 0;">
-                    <h3 style="margin: 0;">⬡ Chamadas Ativas</h3>
+            <div class="dialog" style="width: 660px; max-height: 82vh; overflow: hidden; display: flex; flex-direction: column; padding: 28px; box-sizing: border-box;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-shrink: 0;">
+                    <h3 style="margin: 0;">⬡ Chamadas</h3>
                     <button class="btn-close" onclick="closeSondasDialog()">Fechar</button>
+                </div>
+                <div class="leituras-tabs" id="sondas-tabs" style="margin-bottom: 14px; flex-shrink: 0;">
+                    <button class="leituras-tab active" onclick="setSondasTab('ativas')">Ativas</button>
+                    <button class="leituras-tab" onclick="setSondasTab('radar')">🔍 Radar CFPs</button>
                 </div>
                 <div id="sondas-list" style="overflow-y: auto; flex-grow: 1;"></div>
             </div>
@@ -1361,12 +1365,149 @@
             }
         }
 
+        let sondasTab = 'ativas';
         window.openSondasDialog = function() {
+            sondasTab = 'ativas';
+            document.querySelectorAll("#sondas-tabs .leituras-tab").forEach((b, i) => b.classList.toggle("active", i === 0));
             renderSondasDialog();
             document.getElementById("sondas-dialog-back").classList.add("show");
         };
         window.closeSondasDialog = function() {
             document.getElementById("sondas-dialog-back").classList.remove("show");
+        };
+        window.setSondasTab = function(tab) {
+            sondasTab = tab;
+            document.querySelectorAll("#sondas-tabs .leituras-tab").forEach((b, i) => {
+                b.classList.toggle("active", (i === 0 && tab === 'ativas') || (i === 1 && tab === 'radar'));
+            });
+            renderSondasDialog();
+        };
+        // ── RADAR DE CFPs ──────────────────────────────────────────────
+        const RADAR_URL = "https://gemeo-servidor.vercel.app/api/radar";
+        let radarResultados = null;
+        let radarCarregando = false;
+
+        function renderRadarPanel() {
+            const list = document.getElementById("sondas-list");
+            if (radarCarregando) {
+                list.innerHTML = `<div style="padding:32px 0;text-align:center;color:var(--text-muted)">
+                    <div style="font-size:22px;margin-bottom:12px">🔍</div>
+                    <div style="font-size:13px">A varrer WikiCFP e bases de dados…</div>
+                    <div style="font-size:11px;margin-top:6px;color:#bbb">pode demorar 5–10 segundos</div>
+                </div>`;
+                return;
+            }
+            if (!radarResultados) {
+                list.innerHTML = `<div style="padding:24px 0;text-align:center">
+                    <div style="font-size:12px;color:var(--text-muted);margin-bottom:16px;line-height:1.6">
+                        Varre WikiCFP, bases de dados de fotografia e estudos visuais,<br>e sugere chamadas abertas relevantes para o teu perfil.
+                    </div>
+                    <button class="dlg-ok" onclick="correrRadar()" style="font-size:12px;padding:10px 24px">🔍 Correr Radar</button>
+                </div>`;
+                return;
+            }
+            if (radarResultados.length === 0) {
+                list.innerHTML = `<div style="padding:24px 20px;font-size:12px;color:var(--text-muted)">Nenhuma chamada nova encontrada. Tenta novamente mais tarde.<br><br>
+                    <button class="dlg-ok" onclick="correrRadar()" style="font-size:11px;padding:7px 16px">🔍 Correr de novo</button></div>`;
+                return;
+            }
+            list.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;padding:0 0 12px;flex-shrink:0">
+                <span style="font-size:11px;color:var(--text-muted)">${radarResultados.length} chamada(s) encontrada(s)</span>
+                <div style="display:flex;gap:8px">
+                    <button class="sonda-btn sonda-btn-preparar" style="background:#f5f5f7" onclick="adicionarTodasRadar()">+ Adicionar todas</button>
+                    <button class="sonda-btn sonda-btn-preparar" style="background:#f5f5f7" onclick="correrRadar()">🔍 Atualizar</button>
+                </div>
+            </div>`;
+            radarResultados.forEach(c => {
+                const div = document.createElement("div");
+                div.className = "sonda-card";
+                div.id = "radar-card-" + c.id;
+                const relBadge = c.relevancia >= 8
+                    ? `<span class="sonda-status-badge badge-ativa">Relevância ${c.relevancia}/10</span>`
+                    : `<span class="sonda-status-badge badge-pendente">Relevância ${c.relevancia}/10</span>`;
+                const urlLink = c.url ? `<a class="sonda-link" href="${c.url}" target="_blank">↗ Ver</a>` : '';
+                const prazoBadge = c.prazo ? `<span class="sonda-prazo">Prazo: ${c.prazo}</span>` : '';
+                const fonteBadge = c.fonte === 'conhecimento'
+                    ? `<span style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px">IA</span>`
+                    : `<span style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px">WikiCFP</span>`;
+                div.innerHTML = `
+                    <div class="sonda-titulo">${c.titulo}</div>
+                    <div class="sonda-meta">
+                        ${relBadge}${prazoBadge}
+                        ${c.areas?.length ? '<span class="sonda-areas">' + c.areas.slice(0,3).join(' · ') + '</span>' : ''}
+                        ${fonteBadge}
+                    </div>
+                    ${c.revista ? '<div style="font-size:11px;color:var(--text-muted);margin:4px 0">' + c.revista + '</div>' : ''}
+                    ${c.descricao ? '<div class="sonda-desc">' + c.descricao + '</div>' : ''}
+                    <div class="sonda-btns">
+                        <button class="sonda-btn sonda-btn-preparar" onclick="adicionarRadar('${c.id}')">+ Adicionar como sonda</button>
+                        <button class="sonda-btn sonda-btn-rejeitar" onclick="ignorarRadar('${c.id}')">Ignorar</button>
+                        ${urlLink}
+                    </div>`;
+                list.appendChild(div);
+            });
+        }
+
+        window.correrRadar = async function() {
+            radarCarregando = true;
+            radarResultados = null;
+            renderRadarPanel();
+            try {
+                const resp = await fetch(RADAR_URL);
+                const r = await resp.json();
+                radarResultados = r.candidatos || [];
+            } catch(e) {
+                radarResultados = [];
+            }
+            radarCarregando = false;
+            renderRadarPanel();
+        };
+
+        window.adicionarRadar = async function(id) {
+            const c = radarResultados?.find(x => x.id === id);
+            if (!c) return;
+            const nova = {
+                id: "s" + Date.now(),
+                titulo: c.titulo,
+                revista: c.revista || "",
+                prazo: c.prazo || "",
+                areas: c.areas || [],
+                descricao: c.descricao || "",
+                url: c.url || null,
+                status: "pendente",
+                origem_sync: "radar",
+            };
+            sondasData.push(nova);
+            await saveSondas();
+            radarResultados = radarResultados.filter(x => x.id !== id);
+            render(); renderCockpit(); renderRadarPanel();
+            showToast("Chamada adicionada ✓");
+        };
+
+        window.adicionarTodasRadar = async function() {
+            if (!radarResultados?.length) return;
+            radarResultados.forEach(c => {
+                sondasData.push({
+                    id: "s" + Date.now() + "_" + Math.random().toString(36).slice(2,5),
+                    titulo: c.titulo,
+                    revista: c.revista || "",
+                    prazo: c.prazo || "",
+                    areas: c.areas || [],
+                    descricao: c.descricao || "",
+                    url: c.url || null,
+                    status: "pendente",
+                    origem_sync: "radar",
+                });
+            });
+            await saveSondas();
+            radarResultados = [];
+            render(); renderCockpit(); renderRadarPanel();
+            showToast("Todas as chamadas adicionadas ✓");
+        };
+
+        window.ignorarRadar = function(id) {
+            radarResultados = radarResultados?.filter(x => x.id !== id);
+            renderRadarPanel();
         };
 
         // ── ARQUIVO HISTÓRICO ──────────────────────────────────────────
@@ -1482,6 +1623,7 @@
             });
         }
         function renderSondasDialog() {
+            if (sondasTab === 'radar') { renderRadarPanel(); return; }
             const list = document.getElementById("sondas-list");
             const hoje = new Date().toISOString().slice(0, 10);
             const active = sondasData.filter(s => s.status !== 'enviada' && s.prazo >= hoje);
