@@ -8,7 +8,8 @@ const SONDAS_FILE = "gemeo-sondas.json";
 
 const PERFIL = `Fotógrafo e doutorando na FBAUL (Lisboa). Trabalho: fotografia artística, imagens interiores, corpo, CST (Corpo Sujeito Território), teoria da imagem, Flusser, visualidade contemporânea, filosofia da fotografia, estudos visuais, práticas artísticas baseadas em investigação.
 Áreas de interesse expandido (relevantes se houver ligação à imagem, ao corpo, à prática artística ou à investigação): história da arte contemporânea, filosofia da arte, filosofia da tecnologia e da técnica (Stiegler, Simondon, Heidegger), estudos da memória e do arquivo, materialidade da imagem, experiência estética.
-Revistas de referência: Photographies, History of Photography, Philosophy of Photography, Convergência Lusíada, Eikon, Artíbulo, Photography & Culture, Journal of Aesthetics and Art Criticism, Leonardo, Philosophy & Technology.
+Docência: fotografia, história das artes, cultura visual, antropologia da imagem, pedagogia das artes visuais, artistic research como método de ensino.
+Revistas de referência: Photographies, History of Photography, Philosophy of Photography, Convergência Lusíada, Eikon, Artíbulo, Photography & Culture, Journal of Aesthetics and Art Criticism, Leonardo, Philosophy & Technology, International Journal of Education & the Arts, Studies in Art Education.
 Línguas de trabalho: português, inglês, espanhol, francês.`;
 
 const FONTES_WIKICFP = [
@@ -17,6 +18,8 @@ const FONTES_WIKICFP = [
   "artistic research practice photography",
   "art history contemporary photography visual",
   "philosophy technology memory archive image",
+  "arts education pedagogy visual arts teaching",
+  "photography education art pedagogy",
 ];
 
 async function fetchTexto(url) {

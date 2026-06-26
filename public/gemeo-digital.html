@@ -97,6 +97,39 @@
         .cockpit-go { font-size: 13px; color: var(--text-muted); flex-shrink: 0; margin-top: 2px; opacity: 0; transition: opacity 0.1s; }
         .cockpit-item:hover .cockpit-go { opacity: 1; }
         .cockpit-empty { font-size: 11px; color: var(--text-muted); font-style: italic; padding: 4px 20px 8px; }
+        /* Cadeira dialog */
+        .cadeira-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border-fine); flex-shrink: 0; margin-bottom: 0; }
+        .cadeira-tab { padding: 10px 16px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; background: transparent; border: none; border-bottom: 2px solid transparent; cursor: pointer; color: var(--text-muted); font-family: inherit; }
+        .cadeira-tab:hover { color: var(--text-main); }
+        .cadeira-tab.active { color: var(--text-main); border-bottom-color: var(--text-main); }
+        .cadeira-panel { display: none; flex: 1; overflow-y: auto; padding: 20px 0 0; }
+        .cadeira-panel.active { display: block; }
+        .cadeira-field { margin-bottom: 16px; }
+        .cadeira-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); margin-bottom: 5px; }
+        .cadeira-input { width: 100%; box-sizing: border-box; padding: 8px 10px; font-size: 12px; border: 1px solid var(--border-fine); font-family: inherit; border-radius: 2px; outline: none; }
+        .cadeira-input:focus { border-color: var(--text-main); }
+        .cadeira-textarea { width: 100%; box-sizing: border-box; padding: 8px 10px; font-size: 12px; border: 1px solid var(--border-fine); font-family: inherit; border-radius: 2px; outline: none; resize: vertical; min-height: 80px; line-height: 1.5; }
+        .cadeira-textarea:focus { border-color: var(--text-main); }
+        .planif-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+        .planif-table th { text-align: left; padding: 6px 8px; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); border-bottom: 1px solid var(--border-fine); white-space: nowrap; }
+        .planif-table td { padding: 3px 4px; border-bottom: 1px solid #f0f0f0; vertical-align: top; }
+        .planif-table td input, .planif-table td textarea { width: 100%; box-sizing: border-box; border: none; font-family: inherit; font-size: 11px; background: transparent; outline: none; padding: 3px 4px; resize: none; }
+        .planif-table td input:focus, .planif-table td textarea:focus { background: #fafafa; border-radius: 2px; }
+        .planif-table tr:hover td { background: #fafafa; }
+        .briefing-card { border: 1px solid var(--border-fine); padding: 12px; margin-bottom: 10px; border-radius: 2px; }
+        .briefing-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .briefing-card-num { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); }
+        .briefing-del { background: none; border: none; cursor: pointer; color: var(--text-muted); font-size: 13px; padding: 0; }
+        .briefing-del:hover { color: var(--color-cst); }
+        .alunos-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+        .alunos-table th { text-align: left; padding: 6px 8px; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); border-bottom: 1px solid var(--border-fine); white-space: nowrap; }
+        .alunos-table td { padding: 3px 4px; border-bottom: 1px solid #f0f0f0; }
+        .alunos-table td input { width: 100%; box-sizing: border-box; border: none; font-family: inherit; font-size: 11px; background: transparent; outline: none; padding: 3px 4px; }
+        .alunos-table td input:focus { background: #fafafa; border-radius: 2px; }
+        .cadeira-add-btn { display: flex; align-items: center; gap: 7px; background: transparent; border: 1px dashed var(--border-fine); padding: 8px 12px; font-size: 11px; cursor: pointer; color: var(--text-muted); font-family: inherit; border-radius: 2px; margin-top: 8px; }
+        .cadeira-add-btn:hover { border-color: var(--text-main); color: var(--text-main); background: #fafafa; }
+        .cadeira-save-bar { padding: 12px 0 0; border-top: 1px solid var(--border-fine); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
+        .cadeira-save-status { font-size: 10px; color: var(--text-muted); }
         /* node-status-bar no topo do editor */
         .node-status-bar { padding: 14px 0 16px; margin-bottom: 16px; border-bottom: 1px solid var(--border-fine); flex-shrink: 0; }
         .node-status-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
@@ -380,7 +413,10 @@
             <div id="editor-view" style="display:none;flex-direction:column;height:100%;">
                 <div class="editor-header">
                     <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;" id="silo-indicator">FILA ATIVA</div>
-                    <button class="btn-close" onclick="closeEditor()">← Situação</button>
+                    <div style="display:flex;gap:6px;align-items:center">
+                        <button class="action-btn" id="cadeira-btn" style="display:none;font-size:10px;padding:4px 9px;gap:5px" onclick="openCadeiraDialog()"><span>🎓</span> Cadeira</button>
+                        <button class="btn-close" onclick="closeEditor()">← Situação</button>
+                    </div>
                 </div>
                 <div class="editor-content">
                     <!-- PROGRESSO + PRAZO VISÍVEIS NO TOPO -->
@@ -479,6 +515,78 @@
                     <button class="arquivo-tab" onclick="setArquivoTab('leituras')">Leituras</button>
                 </div>
                 <div id="arquivo-list" style="overflow-y: auto; flex-grow: 1;"></div>
+            </div>
+        </div>
+        <!-- ── DIALOG CADEIRA ─────────────────────────────────── -->
+        <div class="dialog-back" id="cadeira-dialog-back">
+            <div class="dialog" style="width:740px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;padding:28px;box-sizing:border-box;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-shrink:0">
+                    <div>
+                        <h3 style="margin:0;font-size:15px" id="cadeira-dialog-titulo">Cadeira</h3>
+                        <div style="font-size:10px;color:var(--text-muted);margin-top:2px" id="cadeira-dialog-escola"></div>
+                    </div>
+                    <button class="btn-close" onclick="closeCadeiraDialog()">Fechar</button>
+                </div>
+                <div class="cadeira-tabs" id="cadeira-tabs">
+                    <button class="cadeira-tab active" onclick="setCadeiraTab('programa')">Programa</button>
+                    <button class="cadeira-tab" onclick="setCadeiraTab('planificacao')">Planificação</button>
+                    <button class="cadeira-tab" onclick="setCadeiraTab('briefings')">Briefings</button>
+                    <button class="cadeira-tab" onclick="setCadeiraTab('alunos')">Alunos</button>
+                </div>
+                <!-- PROGRAMA -->
+                <div class="cadeira-panel active" id="cadeira-panel-programa">
+                    <div class="cadeira-field">
+                        <div class="cadeira-label">FUC — Link Oficial</div>
+                        <input class="cadeira-input" id="fuc-url" placeholder="https://portal2.ipt.pt/… ou URL do documento IADE" oninput="cadeiraModified()">
+                    </div>
+                    <div class="cadeira-field">
+                        <div class="cadeira-label">Como dou esta cadeira — texto livre</div>
+                        <textarea class="cadeira-textarea" id="fuc-abordagem" style="min-height:140px" placeholder="A minha abordagem, os temas centrais, o fio condutor da cadeira…" oninput="cadeiraModified()"></textarea>
+                    </div>
+                    <div class="cadeira-field">
+                        <div class="cadeira-label">Programa (conteúdos por unidade)</div>
+                        <textarea class="cadeira-textarea" id="fuc-programa" style="min-height:100px" placeholder="Unidade 1 — …&#10;Unidade 2 — …" oninput="cadeiraModified()"></textarea>
+                    </div>
+                    <div class="cadeira-field">
+                        <div class="cadeira-label">Bibliografia Comentada</div>
+                        <div id="biblio-list"></div>
+                        <button class="cadeira-add-btn" onclick="adicionarBiblio()">+ Adicionar referência</button>
+                    </div>
+                </div>
+                <!-- PLANIFICAÇÃO -->
+                <div class="cadeira-panel" id="cadeira-panel-planificacao">
+                    <div style="font-size:11px;color:var(--text-muted);margin-bottom:12px">Uma linha por sessão. Guarda automaticamente.</div>
+                    <div style="overflow-x:auto">
+                    <table class="planif-table" id="planif-table">
+                        <thead><tr>
+                            <th style="width:30px">#</th>
+                            <th style="width:90px">Data</th>
+                            <th style="width:160px">Tema</th>
+                            <th style="width:180px">Objetivos</th>
+                            <th style="width:130px">Materiais</th>
+                            <th>Notas</th>
+                        </tr></thead>
+                        <tbody id="planif-body"></tbody>
+                    </table>
+                    </div>
+                    <button class="cadeira-add-btn" style="margin-top:12px" onclick="adicionarSessao()">+ Sessão</button>
+                </div>
+                <!-- BRIEFINGS -->
+                <div class="cadeira-panel" id="cadeira-panel-briefings">
+                    <div id="briefings-list"></div>
+                    <button class="cadeira-add-btn" onclick="adicionarBriefing()">+ Briefing de avaliação</button>
+                </div>
+                <!-- ALUNOS -->
+                <div class="cadeira-panel" id="cadeira-panel-alunos">
+                    <div style="font-size:11px;color:var(--text-muted);margin-bottom:12px">As colunas de avaliação são geradas a partir dos briefings definidos acima.</div>
+                    <div style="overflow-x:auto"><table class="alunos-table" id="alunos-table"><thead id="alunos-head"></thead><tbody id="alunos-body"></tbody></table></div>
+                    <button class="cadeira-add-btn" style="margin-top:12px" onclick="adicionarAluno()">+ Aluno</button>
+                </div>
+                <!-- SAVE BAR -->
+                <div class="cadeira-save-bar">
+                    <span class="cadeira-save-status" id="cadeira-save-status">—</span>
+                    <button class="dlg-ok" onclick="guardarCadeira()" style="font-size:11px;padding:7px 18px">Guardar</button>
+                </div>
             </div>
         </div>
         <!-- ── DIALOG CAPTURAR ─────────────────────────────────── -->
@@ -1136,6 +1244,9 @@
             renderTags(n); renderInter(n);
             ["block-tags","block-inter","block-meta"].forEach(bid=>{ const b=document.getElementById(bid); if(b){ b.classList.add("collapsed"); const tg=b.querySelector(".block-toggle"); if(tg) tg.innerHTML="&#9662;"; } });
             if (!coexistOK()) { document.getElementById("silo-panel").classList.remove("open"); }
+            // Mostrar botão Cadeira só para nós de cadeira
+            const isCadeira = (n.tags?.cat || []).includes("cadeira");
+            document.getElementById("cadeira-btn").style.display = isCadeira ? "flex" : "none";
             // Mostrar editor, esconder cockpit
             document.getElementById("cockpit-view").style.display = "none";
             document.getElementById("editor-view").style.display = "flex";
@@ -1945,6 +2056,225 @@
         document.getElementById("ai-input").addEventListener("keydown", e => {
             if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) window.sendAI();
         });
+
+        // ── CADEIRA DIALOG ─────────────────────────────────────────────
+        const ENSINO_CADEIRA_URL = "https://gemeo-servidor.vercel.app/api/ensino-cadeira";
+        let cadeiraId = null;
+        let cadeiraData = null;
+        let cadeiraTabAtual = "programa";
+        let cadeiraModificado = false;
+
+        function openCadeiraDialog() {
+            if (!activeNodeId) return;
+            const n = nodeById(activeNodeId);
+            if (!n) return;
+            cadeiraId = activeNodeId;
+            document.getElementById("cadeira-dialog-titulo").textContent = n.label;
+            const link = data.links.find(l => (l.source?.id || l.source) === cadeiraId);
+            if (link) {
+                const pai = nodeById(link.target?.id || link.target);
+                document.getElementById("cadeira-dialog-escola").textContent = pai?.label || "";
+            }
+            document.getElementById("cadeira-dialog-back").classList.add("open");
+            setCadeiraTab("programa");
+            carregarCadeira();
+        }
+
+        function closeCadeiraDialog() {
+            document.getElementById("cadeira-dialog-back").classList.remove("open");
+            cadeiraId = null; cadeiraData = null; cadeiraModificado = false;
+        }
+
+        async function carregarCadeira() {
+            document.getElementById("cadeira-save-status").textContent = "A carregar…";
+            try {
+                const r = await fetch(ENSINO_CADEIRA_URL + "?id=" + cadeiraId);
+                const j = await r.json();
+                cadeiraData = j.dados;
+                renderCadeiraDialog();
+                document.getElementById("cadeira-save-status").textContent = cadeiraData.ultima_edicao
+                    ? "Guardado " + new Date(cadeiraData.ultima_edicao).toLocaleDateString("pt-PT") : "Novo";
+            } catch(e) {
+                document.getElementById("cadeira-save-status").textContent = "Erro a carregar";
+            }
+        }
+
+        function renderCadeiraDialog() {
+            if (!cadeiraData) return;
+            document.getElementById("fuc-url").value = cadeiraData.fuc_url || "";
+            document.getElementById("fuc-abordagem").value = cadeiraData.fuc_abordagem || "";
+            document.getElementById("fuc-programa").value = cadeiraData.fuc_programa || "";
+            renderBiblio();
+            renderPlanificacao();
+            renderBriefings();
+            renderAlunos();
+        }
+
+        function setCadeiraTab(tab) {
+            cadeiraTabAtual = tab;
+            document.querySelectorAll(".cadeira-tab").forEach((t, i) => {
+                const tabs = ["programa","planificacao","briefings","alunos"];
+                t.classList.toggle("active", tabs[i] === tab);
+            });
+            document.querySelectorAll(".cadeira-panel").forEach(p => p.classList.remove("active"));
+            document.getElementById("cadeira-panel-" + tab).classList.add("active");
+        }
+        window.setCadeiraTab = setCadeiraTab;
+
+        function cadeiraModified() { cadeiraModificado = true; }
+        window.cadeiraModified = cadeiraModified;
+
+        async function guardarCadeira() {
+            if (!cadeiraId || !cadeiraData) return;
+            cadeiraData.fuc_url = document.getElementById("fuc-url").value;
+            cadeiraData.fuc_abordagem = document.getElementById("fuc-abordagem").value;
+            cadeiraData.fuc_programa = document.getElementById("fuc-programa").value;
+            document.getElementById("cadeira-save-status").textContent = "A guardar…";
+            try {
+                await fetch(ENSINO_CADEIRA_URL, {
+                    method: "POST",
+                    headers: {"Content-Type":"application/json"},
+                    body: JSON.stringify({ id: cadeiraId, dados: cadeiraData })
+                });
+                cadeiraModificado = false;
+                document.getElementById("cadeira-save-status").textContent = "Guardado " + new Date().toLocaleDateString("pt-PT");
+            } catch(e) {
+                document.getElementById("cadeira-save-status").textContent = "Erro ao guardar";
+            }
+        }
+        window.guardarCadeira = guardarCadeira;
+
+        function esc(s) { return (s || "").replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+        // BIBLIOGRAFIA COMENTADA
+        function renderBiblio() {
+            const biblio = cadeiraData.biblio || [];
+            const el = document.getElementById("biblio-list");
+            el.innerHTML = biblio.map((b, i) => `
+                <div class="briefing-card" style="margin-bottom:8px">
+                    <div class="briefing-card-header">
+                        <span class="briefing-card-num">Ref. ${i+1}</span>
+                        <button class="briefing-del" onclick="removerBiblio(${i})">✕</button>
+                    </div>
+                    <div class="cadeira-field" style="margin-bottom:8px">
+                        <input class="cadeira-input" placeholder="Referência completa (autor, título, ano…)" value="${esc(b.ref)}"
+                            oninput="cadeiraData.biblio[${i}].ref=this.value;cadeiraModified()">
+                    </div>
+                    <div class="cadeira-field" style="margin-bottom:0">
+                        <textarea class="cadeira-textarea" style="min-height:50px" placeholder="Comentário / anotação pessoal"
+                            oninput="cadeiraData.biblio[${i}].nota=this.value;cadeiraModified()">${esc(b.nota)}</textarea>
+                    </div>
+                </div>`).join("");
+        }
+        function adicionarBiblio() {
+            if (!cadeiraData.biblio) cadeiraData.biblio = [];
+            cadeiraData.biblio.push({ ref: "", nota: "" });
+            renderBiblio(); cadeiraModified();
+        }
+        function removerBiblio(i) { cadeiraData.biblio.splice(i, 1); renderBiblio(); cadeiraModified(); }
+        window.adicionarBiblio = adicionarBiblio; window.removerBiblio = removerBiblio;
+
+        // PLANIFICAÇÃO SEMANAL
+        function renderPlanificacao() {
+            if (!cadeiraData.planificacao || !cadeiraData.planificacao.length) {
+                cadeiraData.planificacao = Array.from({length:15},(_,i)=>({n:i+1,data:"",tema:"",objetivos:"",materiais:"",notas:""}));
+            }
+            const tbody = document.getElementById("planif-body");
+            tbody.innerHTML = cadeiraData.planificacao.map((s, i) => `
+                <tr>
+                    <td style="text-align:center;color:var(--text-muted);font-size:10px;font-weight:700">${s.n}</td>
+                    <td><input type="date" value="${esc(s.data)}" oninput="cadeiraData.planificacao[${i}].data=this.value;cadeiraModified()" style="width:100%;border:none;font-size:11px;background:transparent;font-family:inherit;outline:none;padding:3px"></td>
+                    <td><input value="${esc(s.tema)}" oninput="cadeiraData.planificacao[${i}].tema=this.value;cadeiraModified()" placeholder="Tema da sessão"></td>
+                    <td><input value="${esc(s.objetivos)}" oninput="cadeiraData.planificacao[${i}].objetivos=this.value;cadeiraModified()" placeholder="Objetivos de aprendizagem"></td>
+                    <td><input value="${esc(s.materiais)}" oninput="cadeiraData.planificacao[${i}].materiais=this.value;cadeiraModified()" placeholder="Leituras, recursos"></td>
+                    <td><input value="${esc(s.notas)}" oninput="cadeiraData.planificacao[${i}].notas=this.value;cadeiraModified()" placeholder="Notas"></td>
+                </tr>`).join("");
+        }
+        function adicionarSessao() {
+            const n = cadeiraData.planificacao.length + 1;
+            cadeiraData.planificacao.push({n, data:"", tema:"", objetivos:"", materiais:"", notas:""});
+            renderPlanificacao(); cadeiraModified();
+        }
+        window.adicionarSessao = adicionarSessao;
+
+        // BRIEFINGS DE AVALIAÇÃO
+        function renderBriefings() {
+            const bl = cadeiraData.briefings || [];
+            document.getElementById("briefings-list").innerHTML = bl.map((b, i) => `
+                <div class="briefing-card">
+                    <div class="briefing-card-header">
+                        <span class="briefing-card-num">Briefing ${i+1}</span>
+                        <button class="briefing-del" onclick="removerBriefing(${i})">✕</button>
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr 80px 120px;gap:8px;margin-bottom:8px">
+                        <div class="cadeira-field" style="margin:0">
+                            <div class="cadeira-label">Título</div>
+                            <input class="cadeira-input" value="${esc(b.titulo)}" placeholder="Nome do trabalho"
+                                oninput="cadeiraData.briefings[${i}].titulo=this.value;cadeiraModified()">
+                        </div>
+                        <div class="cadeira-field" style="margin:0">
+                            <div class="cadeira-label">Peso %</div>
+                            <input class="cadeira-input" type="number" min="0" max="100" value="${b.peso||''}" placeholder="40"
+                                oninput="cadeiraData.briefings[${i}].peso=+this.value;cadeiraModified()">
+                        </div>
+                        <div class="cadeira-field" style="margin:0">
+                            <div class="cadeira-label">Prazo</div>
+                            <input class="cadeira-input" type="date" value="${esc(b.prazo)}"
+                                oninput="cadeiraData.briefings[${i}].prazo=this.value;cadeiraModified()">
+                        </div>
+                    </div>
+                    <div class="cadeira-field" style="margin-bottom:8px">
+                        <div class="cadeira-label">Enunciado</div>
+                        <textarea class="cadeira-textarea" style="min-height:60px" placeholder="O que se pede ao aluno…"
+                            oninput="cadeiraData.briefings[${i}].descricao=this.value;cadeiraModified()">${esc(b.descricao)}</textarea>
+                    </div>
+                    <div class="cadeira-field" style="margin-bottom:0">
+                        <div class="cadeira-label">Critérios de avaliação</div>
+                        <textarea class="cadeira-textarea" style="min-height:50px"
+                            placeholder="Coerência conceptual, qualidade técnica, apresentação…"
+                            oninput="cadeiraData.briefings[${i}].criterios=this.value;cadeiraModified()">${esc(b.criterios)}</textarea>
+                    </div>
+                </div>`).join("");
+        }
+        function adicionarBriefing() {
+            if (!cadeiraData.briefings) cadeiraData.briefings = [];
+            cadeiraData.briefings.push({ titulo:"", descricao:"", criterios:"", peso:0, prazo:"" });
+            renderBriefings(); cadeiraModified();
+        }
+        function removerBriefing(i) { cadeiraData.briefings.splice(i, 1); renderBriefings(); cadeiraModified(); }
+        window.adicionarBriefing = adicionarBriefing; window.removerBriefing = removerBriefing;
+
+        // TABELA DE ALUNOS
+        function renderAlunos() {
+            const alunos = cadeiraData.alunos || [];
+            const briefings = cadeiraData.briefings || [];
+            document.getElementById("alunos-head").innerHTML = `<tr>
+                <th>Nome</th><th style="width:80px">Número</th>
+                ${briefings.map((b,i)=>`<th style="width:70px">${esc(b.titulo||('B'+(i+1)))} (${b.peso||'?'}%)</th>`).join("")}
+                <th style="width:70px">Final</th><th style="width:30px"></th></tr>`;
+            document.getElementById("alunos-body").innerHTML = alunos.map((a, ai) => `
+                <tr>
+                    <td><input class="alunos-input" value="${esc(a.nome)}" placeholder="Nome do aluno"
+                        oninput="cadeiraData.alunos[${ai}].nome=this.value;cadeiraModified()"></td>
+                    <td><input class="alunos-input" value="${esc(a.numero)}" placeholder="Nº"
+                        oninput="cadeiraData.alunos[${ai}].numero=this.value;cadeiraModified()"></td>
+                    ${briefings.map((b,bi)=>`<td><input class="alunos-input" style="text-align:center"
+                        value="${esc(a.avaliacoes?.[b.titulo||('b'+bi)]||'')}" placeholder="—"
+                        oninput="if(!cadeiraData.alunos[${ai}].avaliacoes)cadeiraData.alunos[${ai}].avaliacoes={};cadeiraData.alunos[${ai}].avaliacoes['${esc(b.titulo||('b'+bi))}']=this.value;cadeiraModified()"></td>`).join("")}
+                    <td><input class="alunos-input" style="text-align:center;font-weight:700" value="${esc(a.final||'')}"
+                        placeholder="—" oninput="cadeiraData.alunos[${ai}].final=this.value;cadeiraModified()"></td>
+                    <td><button class="briefing-del" onclick="removerAluno(${ai})">✕</button></td>
+                </tr>`).join("");
+        }
+        function adicionarAluno() {
+            if (!cadeiraData.alunos) cadeiraData.alunos = [];
+            cadeiraData.alunos.push({ nome:"", numero:"", avaliacoes:{}, final:"" });
+            renderAlunos(); cadeiraModified();
+        }
+        function removerAluno(i) { cadeiraData.alunos.splice(i, 1); renderAlunos(); cadeiraModified(); }
+        window.adicionarAluno = adicionarAluno; window.removerAluno = removerAluno;
+        window.openCadeiraDialog = openCadeiraDialog;
+        window.closeCadeiraDialog = closeCadeiraDialog;
 
         // ── CAPTURA UNIVERSAL ──────────────────────────────────────────
         const CAPTURAR_URL = "https://gemeo-servidor.vercel.app/api/capturar";
