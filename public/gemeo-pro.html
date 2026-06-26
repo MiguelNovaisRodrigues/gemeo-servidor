@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gémeo Digital — The academic twin for researchers who create</title>
+<meta name="description" content="A knowledge graph for researchers, PhD students, and artist-academics. Connects your writing, teaching, artistic work, and deadlines in one live graph.">
+<style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+        --black: #111111;
+        --gray: #6b6b6b;
+        --light: #f5f5f7;
+        --border: #e5e5e5;
+        --accent: #111;
+    }
+    body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+        background: #fff; color: var(--black); -webkit-font-smoothing: antialiased; }
+
+    nav { padding: 20px 40px; display: flex; justify-content: space-between; align-items: center;
+        border-bottom: 1px solid var(--border); }
+    .nav-brand { font-size: 13px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; }
+    .nav-links { display: flex; gap: 24px; }
+    .nav-link { font-size: 12px; color: var(--gray); text-decoration: none; }
+    .nav-link:hover { color: var(--black); }
+
+    /* HERO */
+    .hero { max-width: 720px; margin: 0 auto; padding: 100px 40px 80px; text-align: center; }
+    .eyebrow { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px;
+        color: var(--gray); margin-bottom: 20px; }
+    .hero h1 { font-size: 46px; font-weight: 700; line-height: 1.12; letter-spacing: -1px;
+        margin-bottom: 24px; }
+    .hero h1 em { font-style: normal; border-bottom: 3px solid var(--black); }
+    .hero p { font-size: 17px; line-height: 1.7; color: var(--gray); margin-bottom: 48px;
+        max-width: 580px; margin-left: auto; margin-right: auto; }
+
+    /* WAITLIST */
+    .waitlist-form { display: flex; gap: 8px; max-width: 420px; margin: 0 auto 16px; }
+    .waitlist-input { flex: 1; padding: 12px 16px; font-size: 14px; font-family: inherit;
+        border: 1px solid var(--border); outline: none; border-radius: 2px; }
+    .waitlist-input:focus { border-color: var(--black); }
+    .waitlist-btn { padding: 12px 20px; background: var(--black); color: #fff; border: none;
+        font-size: 12px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase;
+        cursor: pointer; font-family: inherit; border-radius: 2px; white-space: nowrap; }
+    .waitlist-btn:hover { background: #333; }
+    .waitlist-note { font-size: 11px; color: var(--gray); text-align: center; }
+    #hero-msg { font-size: 13px; margin-top: 12px; text-align: center; min-height: 20px; }
+
+    /* FEATURES */
+    .features { max-width: 900px; margin: 0 auto; padding: 80px 40px; }
+    .features-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px;
+        background: var(--border); border: 1px solid var(--border); }
+    .feature { background: #fff; padding: 32px; }
+    .feature-icon { font-size: 22px; margin-bottom: 16px; }
+    .feature-title { font-size: 14px; font-weight: 700; margin-bottom: 10px; }
+    .feature-desc { font-size: 13px; line-height: 1.65; color: var(--gray); }
+
+    /* PROBLEM */
+    .problem { background: var(--light); border-top: 1px solid var(--border);
+        border-bottom: 1px solid var(--border); padding: 80px 40px; }
+    .problem-inner { max-width: 680px; margin: 0 auto; }
+    .problem h2 { font-size: 28px; font-weight: 700; letter-spacing: -0.3px; margin-bottom: 24px; }
+    .problem p { font-size: 15px; line-height: 1.7; color: var(--gray); margin-bottom: 16px; }
+    .problem strong { color: var(--black); }
+
+    /* WHO */
+    .who { max-width: 900px; margin: 0 auto; padding: 80px 40px; }
+    .who h2 { font-size: 22px; font-weight: 700; margin-bottom: 32px; letter-spacing: -0.2px; }
+    .who-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+    .who-card { border: 1px solid var(--border); padding: 24px; border-radius: 2px; }
+    .who-role { font-size: 13px; font-weight: 700; margin-bottom: 10px; }
+    .who-desc { font-size: 12px; line-height: 1.65; color: var(--gray); }
+
+    /* BOTTOM CTA */
+    .cta { text-align: center; padding: 80px 40px; border-top: 1px solid var(--border); }
+    .cta h2 { font-size: 28px; font-weight: 700; letter-spacing: -0.3px; margin-bottom: 12px; }
+    .cta p { font-size: 14px; color: var(--gray); margin-bottom: 32px; }
+    .cta-form { display: flex; gap: 8px; max-width: 380px; margin: 0 auto 12px; }
+    .cta-input { flex: 1; padding: 11px 14px; font-size: 13px; font-family: inherit;
+        border: 1px solid var(--border); outline: none; border-radius: 2px; }
+    .cta-input:focus { border-color: var(--black); }
+    .cta-btn { padding: 11px 18px; background: var(--black); color: #fff; border: none;
+        font-size: 12px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase;
+        cursor: pointer; font-family: inherit; border-radius: 2px; }
+    .cta-btn:hover { background: #333; }
+    #cta-msg { font-size: 12px; text-align: center; min-height: 18px; }
+
+    footer { padding: 30px 40px; display: flex; justify-content: space-between; align-items: center;
+        border-top: 1px solid var(--border); }
+    .footer-left { font-size: 11px; color: var(--gray); }
+    .footer-links { display: flex; gap: 20px; }
+    .footer-link { font-size: 11px; color: var(--gray); text-decoration: none; }
+    .footer-link:hover { color: var(--black); }
+
+    @media (max-width: 680px) {
+        .hero h1 { font-size: 30px; }
+        .features-grid, .who-grid { grid-template-columns: 1fr; }
+        .waitlist-form, .cta-form { flex-direction: column; }
+        nav { padding: 16px 20px; }
+    }
+</style>
+</head>
+<body>
+
+<nav>
+    <div class="nav-brand">Gémeo Digital</div>
+    <div class="nav-links">
+        <a href="/radar.html" class="nav-link">CFP Radar</a>
+        <a href="mailto:mrmito@gmail.com" class="nav-link">Contact</a>
+    </div>
+</nav>
+
+<div class="hero">
+    <div class="eyebrow">Coming soon — join the waitlist</div>
+    <h1>Your academic twin.<br><em>Live, connected, yours.</em></h1>
+    <p>Gémeo Digital is a knowledge graph for researchers who also teach, create, and write. It connects your articles, courses, artistic projects, and deadlines in one visual space — and finds CFP opportunities while you sleep.</p>
+
+    <div class="waitlist-form">
+        <input class="waitlist-input" id="hero-email" type="email" placeholder="your@email.com">
+        <button class="waitlist-btn" onclick="joinHero()">Get early access</button>
+    </div>
+    <div class="waitlist-note">No spam. We'll write when it's ready.</div>
+    <div id="hero-msg"></div>
+</div>
+
+<div class="features">
+    <div class="features-grid">
+        <div class="feature">
+            <div class="feature-icon">◉</div>
+            <div class="feature-title">Visual knowledge graph</div>
+            <div class="feature-desc">See how your writing, research, teaching, and artistic practice connect. Nodes cluster by domain, sized by depth of engagement.</div>
+        </div>
+        <div class="feature">
+            <div class="feature-icon">⌖</div>
+            <div class="feature-title">CFP Radar</div>
+            <div class="feature-desc">Proactive scanning of academic databases for calls for papers, conferences, and journals — scored for relevance to your specific profile.</div>
+        </div>
+        <div class="feature">
+            <div class="feature-icon">⊕</div>
+            <div class="feature-title">Capture anything</div>
+            <div class="feature-desc">One-click browser bookmarklet, paste from other AIs, sync from Google Calendar, Gmail, and institutional email. Your graph stays up to date.</div>
+        </div>
+        <div class="feature">
+            <div class="feature-icon">⊞</div>
+            <div class="feature-title">Teaching management</div>
+            <div class="feature-desc">Course programs, lesson plans, assessment briefs, and student tracking — all connected to your research graph, not siloed in a separate app.</div>
+        </div>
+        <div class="feature">
+            <div class="feature-icon">◷</div>
+            <div class="feature-title">Deadline rings</div>
+            <div class="feature-desc">Every node shows its deadline as a circular arc — growing from green to red as the date approaches. Urgency is visible at a glance.</div>
+        </div>
+        <div class="feature">
+            <div class="feature-icon">⇌</div>
+            <div class="feature-title">Daily sync</div>
+            <div class="feature-desc">Every morning, a briefing: what needs attention today, what CFPs are open, what's due this week — pulled from your calendars and email.</div>
+        </div>
+    </div>
+</div>
+
+<div class="problem">
+    <div class="problem-inner">
+        <h2>Built for a specific kind of person</h2>
+        <p>You're a researcher. But you also teach. And you make things — photographs, installations, publications, instruments. Your work doesn't fit neatly into Notion or Obsidian. <strong>It lives across domains that are actually deeply connected.</strong></p>
+        <p>Existing tools treat your teaching and your research as separate. They don't know that the paper you're writing feeds the course you're building, which feeds the artistic project you're developing. <strong>Gémeo does.</strong></p>
+        <p>It was built by a photographer and doctoral researcher who needed exactly this. The graph isn't a metaphor — it's the actual structure of the work.</p>
+    </div>
+</div>
+
+<div class="who">
+    <h2>Who it's for</h2>
+    <div class="who-grid">
+        <div class="who-card">
+            <div class="who-role">PhD researchers in arts & humanities</div>
+            <div class="who-desc">Juggling dissertation writing, conference submissions, and a teaching load. CFP Radar alone is worth the subscription.</div>
+        </div>
+        <div class="who-card">
+            <div class="who-role">Artist-academics</div>
+            <div class="who-desc">Your practice IS your research, but your institution doesn't see it that way. Gémeo connects both sides of your work in one graph.</div>
+        </div>
+        <div class="who-card">
+            <div class="who-role">Independent researchers & critics</div>
+            <div class="who-desc">No institutional support. CFP Radar finds the open calls, the graph keeps the ideas connected, the daily briefing keeps you on track.</div>
+        </div>
+    </div>
+</div>
+
+<div class="cta">
+    <h2>Be the first to know</h2>
+    <p>Gémeo Digital is currently in private development. Join the waitlist and we'll reach out when early access opens.</p>
+    <div class="cta-form">
+        <input class="cta-input" id="cta-email" type="email" placeholder="your@email.com">
+        <button class="cta-btn" onclick="joinCta()">Join waitlist</button>
+    </div>
+    <div id="cta-msg"></div>
+</div>
+
+<footer>
+    <div class="footer-left">Gémeo Digital · Built in Lisbon</div>
+    <div class="footer-links">
+        <a href="/radar.html" class="footer-link">CFP Radar</a>
+        <a href="mailto:mrmito@gmail.com" class="footer-link">mrmito@gmail.com</a>
+    </div>
+</footer>
+
+<script>
+const WAITLIST = "https://gemeo-servidor.vercel.app/api/waitlist";
+
+async function submitWaitlist(email, msgEl) {
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        msgEl.textContent = "Please enter a valid email.";
+        msgEl.style.color = "#9e2a2b";
+        return;
+    }
+    try {
+        const r = await fetch(WAITLIST, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, produto: "gemeo-pro" })
+        });
+        const d = await r.json();
+        msgEl.textContent = d.novo ? "You're on the list. We'll be in touch." : "You're already on the list!";
+        msgEl.style.color = "#2d7a4a";
+    } catch(e) {
+        msgEl.textContent = "Something went wrong. Try again.";
+        msgEl.style.color = "#9e2a2b";
+    }
+}
+
+function joinHero() {
+    submitWaitlist(
+        document.getElementById("hero-email").value.trim(),
+        document.getElementById("hero-msg")
+    );
+}
+function joinCta() {
+    submitWaitlist(
+        document.getElementById("cta-email").value.trim(),
+        document.getElementById("cta-msg")
+    );
+}
+</script>
+</body>
+</html>

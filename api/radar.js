@@ -1,6 +1,7 @@
 // Radar de CFPs — varre fontes públicas activamente e devolve chamadas relevantes
-// GET /api/radar          → lista de candidatos scored
-// GET /api/radar?commit=1 → idem + envia automaticamente para /api/sincronizar
+// GET /api/radar                    → lista de candidatos (perfil de Miguel)
+// GET /api/radar?commit=1           → idem + envia para /api/sincronizar
+// POST /api/radar { perfil, areas } → radar com perfil customizado (serviço público)
 
 import { lerGist } from "./_gist.js";
 
@@ -45,11 +46,11 @@ async function fetchTexto(url) {
   }
 }
 
-async function extrairCandidatos(textos, titulosExistentes) {
+async function extrairCandidatos(textos, titulosExistentes, perfil = PERFIL) {
   const textosCombinados = textos.filter(Boolean).join("\n\n---\n\n").slice(0, 6000);
   if (!textosCombinados.trim()) return [];
 
-  const prompt = `${PERFIL}
+  const prompt = `${perfil}
 
 Abaixo está texto extraído de páginas de chamadas para artigos e conferências. Extrai todas as chamadas que sejam relevantes para este perfil (mínimo relevância 6/10). Ignora chamadas já encerradas se conseguires determinar a data.
 
@@ -95,8 +96,8 @@ Devolve array vazio [] se não houver nada relevante.`;
   }
 }
 
-async function sugerirDeConhecimento(titulosExistentes) {
-  const prompt = `${PERFIL}
+async function sugerirDeConhecimento(titulosExistentes, perfil = PERFIL) {
+  const prompt = `${perfil}
 
 Com base no teu conhecimento actualizado, sugere 5-8 chamadas para artigos ou conferências que estejam provavelmente abertas agora (2025-2026) e sejam altamente relevantes para este perfil. Inclui: revistas internacionais de fotografia, estudos visuais, artistic research, filosofia da imagem. Prioriza chamadas com deadlines nos próximos 6 meses.
 
@@ -141,31 +142,54 @@ Responde APENAS com JSON:
 
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   if (req.method === "OPTIONS") { res.status(200).end(); return; }
-  if (req.method !== "GET") { res.status(405).json({ erro: "Método não suportado" }); return; }
+  if (req.method !== "GET" && req.method !== "POST") {
+    res.status(405).json({ erro: "Método não suportado" }); return;
+  }
 
   try {
     const commit = req.query?.commit === "1" || req.query?.commit === "true";
 
-    // Sondas existentes para evitar duplicados
-    const sondasRaw = await lerGist(SONDAS_FILE);
-    const sondas = sondasRaw && sondasRaw !== "[]" ? JSON.parse(sondasRaw) : [];
-    const titulosExistentes = sondas.map(s => s.titulo?.toLowerCase().trim());
+    // Modo serviço público: POST com perfil customizado
+    let perfilActivo = PERFIL;
+    let fontesActivas = FONTES_WIKICFP;
+    let modoPublico = false;
+
+    if (req.method === "POST") {
+      const body = typeof req.body === "string" ? JSON.parse(req.body) : req.body || {};
+      if (body.perfil) {
+        perfilActivo = body.perfil;
+        modoPublico = true;
+        // Gerar queries wikicfp a partir das áreas fornecidas
+        const areas = body.areas || [];
+        if (areas.length > 0) {
+          fontesActivas = areas.slice(0, 5).map(a => a.toLowerCase().trim());
+        }
+      }
+    }
+
+    // Sondas existentes (só no modo pessoal, para evitar duplicados)
+    const titulosExistentes = [];
+    if (!modoPublico) {
+      const sondasRaw = await lerGist(SONDAS_FILE);
+      const sondas = sondasRaw && sondasRaw !== "[]" ? JSON.parse(sondasRaw) : [];
+      titulosExistentes.push(...sondas.map(s => s.titulo?.toLowerCase().trim()));
+    }
 
     // Fetch WikiCFP em paralelo + sugestões de conhecimento
     const [textos, conhecimento] = await Promise.all([
       Promise.all(
-        FONTES_WIKICFP.map(q =>
+        fontesActivas.map(q =>
           fetchTexto(`https://www.wikicfp.com/cfp/servlet/tool.search?q=${encodeURIComponent(q)}&series=0`)
         )
       ),
-      sugerirDeConhecimento(titulosExistentes),
+      sugerirDeConhecimento(titulosExistentes, perfilActivo),
     ]);
 
     // Extrai candidatos do WikiCFP
-    const doWikicfp = await extrairCandidatos(textos, titulosExistentes);
+    const doWikicfp = await extrairCandidatos(textos, titulosExistentes, perfilActivo);
 
     // Junta tudo, remove duplicados por título
     const titulosVistos = new Set(titulosExistentes);
