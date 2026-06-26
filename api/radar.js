@@ -6,12 +6,17 @@ import { lerGist } from "./_gist.js";
 
 const SONDAS_FILE = "gemeo-sondas.json";
 
-const PERFIL = `Fotógrafo e doutorando na FBAUL (Lisboa). Trabalho: fotografia artística, imagens interiores, corpo, CST (Corpo Sujeito Território), teoria da imagem, Flusser, visualidade contemporânea, filosofia da fotografia, estudos visuais, práticas artísticas baseadas em investigação. Revistas de referência: Photographies, History of Photography, Philosophy of Photography, Convergência Lusíada, Eikon, Artíbulo, Photography & Culture. Línguas de trabalho: português, inglês, espanhol, francês.`;
+const PERFIL = `Fotógrafo e doutorando na FBAUL (Lisboa). Trabalho: fotografia artística, imagens interiores, corpo, CST (Corpo Sujeito Território), teoria da imagem, Flusser, visualidade contemporânea, filosofia da fotografia, estudos visuais, práticas artísticas baseadas em investigação.
+Áreas de interesse expandido (relevantes se houver ligação à imagem, ao corpo, à prática artística ou à investigação): história da arte contemporânea, filosofia da arte, filosofia da tecnologia e da técnica (Stiegler, Simondon, Heidegger), estudos da memória e do arquivo, materialidade da imagem, experiência estética.
+Revistas de referência: Photographies, History of Photography, Philosophy of Photography, Convergência Lusíada, Eikon, Artíbulo, Photography & Culture, Journal of Aesthetics and Art Criticism, Leonardo, Philosophy & Technology.
+Línguas de trabalho: português, inglês, espanhol, francês.`;
 
 const FONTES_WIKICFP = [
-  "photography visual art embodiment",
-  "image theory visual culture photography",
+  "photography visual art embodiment memory",
+  "image theory visual culture philosophy",
   "artistic research practice photography",
+  "art history contemporary photography visual",
+  "philosophy technology memory archive image",
 ];
 
 async function fetchTexto(url) {
