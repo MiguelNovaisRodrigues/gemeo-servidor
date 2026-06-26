@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Miguel Rodrigues</title>
+<meta name="description" content="Fotógrafo, investigador e professor. Lisboa.">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+    --black: #111;
+    --gray: #666;
+    --light-gray: #999;
+    --border: #e8e8e8;
+    --bg: #fff;
+    --col: 720px;
+    --pad: 48px;
+}
+html { scroll-behavior: smooth; }
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Georgia, sans-serif;
+    background: var(--bg); color: var(--black);
+    -webkit-font-smoothing: antialiased; line-height: 1.6;
+}
+
+/* ── NAV ── */
+nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    background: rgba(255,255,255,0.92); backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 var(--pad);
+    display: flex; align-items: center; justify-content: space-between;
+    height: 52px;
+}
+.nav-name { font-size: 13px; font-weight: 600; letter-spacing: 0.2px; }
+.nav-links { display: flex; gap: 28px; align-items: center; }
+.nav-link { font-size: 12px; color: var(--gray); text-decoration: none;
+    letter-spacing: 0.2px; transition: color 0.2s; }
+.nav-link:hover { color: var(--black); }
+.nav-link.active { color: var(--black); font-weight: 600; }
+.lang-toggle { display: flex; gap: 0; border: 1px solid var(--border); border-radius: 3px; overflow: hidden; }
+.lang-btn { font-size: 10px; font-weight: 700; letter-spacing: 0.8px; padding: 4px 9px;
+    background: transparent; border: none; cursor: pointer; font-family: inherit;
+    color: var(--light-gray); transition: all 0.15s; }
+.lang-btn.active { background: var(--black); color: #fff; }
+
+/* ── SECTIONS ── */
+section { padding: 96px var(--pad) 80px; border-bottom: 1px solid var(--border); }
+section:first-of-type { padding-top: 120px; }
+.section-inner { max-width: var(--col); margin: 0 auto; }
+.section-label {
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 1.8px; color: var(--light-gray); margin-bottom: 32px;
+    display: flex; align-items: center; gap: 12px;
+}
+.section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+/* ── HERO ── */
+#sobre { border-bottom: 1px solid var(--border); }
+.hero-name { font-size: 42px; font-weight: 700; letter-spacing: -1px; line-height: 1.1;
+    margin-bottom: 20px; }
+.hero-role { font-size: 14px; color: var(--gray); margin-bottom: 36px;
+    letter-spacing: 0.3px; }
+.hero-bio { font-size: 16px; line-height: 1.8; color: #333; max-width: 580px; }
+.hero-bio p { margin-bottom: 16px; }
+.hero-bio p:last-child { margin-bottom: 0; }
+.hero-links { display: flex; gap: 20px; margin-top: 32px; flex-wrap: wrap; }
+.hero-link { font-size: 12px; font-weight: 600; color: var(--black); text-decoration: none;
+    border-bottom: 1px solid var(--black); padding-bottom: 1px;
+    letter-spacing: 0.3px; transition: opacity 0.2s; }
+.hero-link:hover { opacity: 0.5; }
+
+/* ── ITEM LISTS ── */
+.item-list { display: flex; flex-direction: column; gap: 0; }
+.item { padding: 24px 0; border-bottom: 1px solid var(--border); }
+.item:last-child { border-bottom: none; }
+.item-title { font-size: 15px; font-weight: 600; margin-bottom: 6px; line-height: 1.4; }
+.item-sub { font-size: 12px; color: var(--light-gray); margin-bottom: 8px;
+    letter-spacing: 0.2px; }
+.item-body { font-size: 13px; color: #555; line-height: 1.7; max-width: 560px; }
+.item-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px; }
+.item-tag { font-size: 10px; padding: 2px 8px; background: #f5f5f7;
+    border-radius: 20px; color: var(--gray); }
+.item-link { font-size: 11px; color: var(--black); font-weight: 600;
+    text-decoration: none; border-bottom: 1px solid var(--border); margin-top: 8px;
+    display: inline-block; }
+.item-link:hover { border-color: var(--black); }
+.item-prazo { font-size: 11px; font-weight: 600; margin-top: 8px; display: inline-block; }
+.item-prazo.urgent { color: #9e2a2b; }
+.item-prazo.soon { color: #b86e00; }
+.item-prazo.ok { color: #2d7a4a; }
+
+/* ── ESCOLA HEADER (aulas) ── */
+.escola-block { margin-bottom: 48px; }
+.escola-block:last-child { margin-bottom: 0; }
+.escola-name { font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 1.2px; color: var(--light-gray); margin-bottom: 20px;
+    padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+
+/* ── EMPTY STATE ── */
+.empty { font-size: 13px; color: var(--light-gray); font-style: italic; padding: 20px 0; }
+
+/* ── CONTACTO ── */
+.contacto-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
+.contacto-item strong { font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 1px; color: var(--light-gray); display: block; margin-bottom: 6px; }
+.contacto-item a { font-size: 14px; color: var(--black); text-decoration: none;
+    border-bottom: 1px solid var(--border); }
+.contacto-item a:hover { border-color: var(--black); }
+
+/* ── FOOTER ── */
+footer { padding: 32px var(--pad); display: flex; justify-content: space-between;
+    align-items: center; }
+.footer-left { font-size: 11px; color: var(--light-gray); }
+.footer-right { font-size: 11px; color: var(--light-gray); }
+.footer-right a { color: var(--light-gray); text-decoration: none; }
+.footer-right a:hover { color: var(--black); }
+
+/* ── LOADING ── */
+.loading-dot { display: inline-block; width: 5px; height: 5px; border-radius: 50%;
+    background: var(--border); margin-right: 4px; }
+
+@media (max-width: 640px) {
+    :root { --pad: 20px; }
+    .hero-name { font-size: 28px; }
+    .nav-links { gap: 16px; }
+    .contacto-grid { grid-template-columns: 1fr; }
+    .nav-link[data-section] { display: none; }
+}
+</style>
+</head>
+<body>
+
+<nav>
+    <div class="nav-name">Miguel Rodrigues</div>
+    <div class="nav-links">
+        <a href="#sobre"      class="nav-link" data-section="sobre"      data-pt="sobre"      data-en="about">sobre</a>
+        <a href="#escrita"    class="nav-link" data-section="escrita"    data-pt="escrita"    data-en="writing">escrita</a>
+        <a href="#cst"        class="nav-link" data-section="cst"        data-pt="trabalho"   data-en="work">trabalho</a>
+        <a href="#aulas"      class="nav-link" data-section="aulas"      data-pt="ensino"     data-en="teaching">ensino</a>
+        <a href="#produtos"   class="nav-link" data-section="produtos"   data-pt="projetos"   data-en="projects">projetos</a>
+        <a href="#contacto"   class="nav-link" data-section="contacto"   data-pt="contacto"   data-en="contact">contacto</a>
+        <div class="lang-toggle">
+            <button class="lang-btn active" onclick="setLang('pt')">PT</button>
+            <button class="lang-btn"        onclick="setLang('en')">EN</button>
+        </div>
+    </div>
+</nav>
+
+<!-- SOBRE -->
+<section id="sobre">
+    <div class="section-inner">
+        <div class="hero-name">Miguel Rodrigues</div>
+        <div class="hero-role" data-pt="Fotógrafo · Investigador · Professor · Lisboa" data-en="Photographer · Researcher · Professor · Lisbon">
+            Fotógrafo · Investigador · Professor · Lisboa
+        </div>
+        <div class="hero-bio">
+            <p data-pt="Trabalho na interseção entre fotografia artística, investigação académica e ensino. O meu projeto central — CST (Corpo, Sujeito, Território) — explora a relação entre o corpo do fotógrafo, o sujeito fotografado e o território como contexto de produção de sentido."
+               data-en="I work at the intersection of artistic photography, academic research, and teaching. My central project — CST (Body, Subject, Territory) — explores the relationship between the photographer's body, the photographed subject, and territory as a context for the production of meaning.">
+                Trabalho na interseção entre fotografia artística, investigação académica e ensino. O meu projeto central — CST (Corpo, Sujeito, Território) — explora a relação entre o corpo do fotógrafo, o sujeito fotografado e o território como contexto de produção de sentido.
+            </p>
+            <p data-pt="Sou doutorando na FBAUL (Faculdade de Belas-Artes da Universidade de Lisboa) e docente no IPT, IADE e Atelier de Lisboa."
+               data-en="I am a PhD researcher at FBAUL (Faculty of Fine Arts, University of Lisbon) and a lecturer at IPT, IADE, and Atelier de Lisboa.">
+                Sou doutorando na FBAUL (Faculdade de Belas-Artes da Universidade de Lisboa) e docente no IPT, IADE e Atelier de Lisboa.
+            </p>
+        </div>
+        <div class="hero-links">
+            <a href="mailto:mrmito@gmail.com" class="hero-link">mrmito@gmail.com</a>
+            <a href="/radar.html" class="hero-link" data-pt="Radar de CFPs" data-en="CFP Radar">Radar de CFPs</a>
+            <a href="/gemeo-pro.html" class="hero-link">Gémeo Digital</a>
+        </div>
+    </div>
+</section>
+
+<!-- ESCRITA -->
+<section id="escrita">
+    <div class="section-inner">
+        <div class="section-label" data-pt="Escrita &amp; Investigação" data-en="Writing &amp; Research">Escrita &amp; Investigação</div>
+        <div class="item-list" id="escrita-list"><span class="loading-dot"></span></div>
+    </div>
+</section>
+
+<!-- TRABALHO ARTÍSTICO / CST -->
+<section id="cst">
+    <div class="section-inner">
+        <div class="section-label" data-pt="Trabalho Artístico" data-en="Artistic Work">Trabalho Artístico</div>
+        <div class="item-list" id="cst-list"><span class="loading-dot"></span></div>
+    </div>
+</section>
+
+<!-- ENSINO -->
+<section id="aulas">
+    <div class="section-inner">
+        <div class="section-label" data-pt="Ensino" data-en="Teaching">Ensino</div>
+        <div id="aulas-list"><span class="loading-dot"></span></div>
+    </div>
+</section>
+
+<!-- PROJETOS / PRODUTOS -->
+<section id="produtos">
+    <div class="section-inner">
+        <div class="section-label" data-pt="Projetos &amp; Produtos" data-en="Projects &amp; Products">Projetos &amp; Produtos</div>
+        <div class="item-list" id="produtos-list"><span class="loading-dot"></span></div>
+    </div>
+</section>
+
+<!-- CONTACTO -->
+<section id="contacto">
+    <div class="section-inner">
+        <div class="section-label" data-pt="Contacto" data-en="Contact">Contacto</div>
+        <div class="contacto-grid">
+            <div class="contacto-item">
+                <strong data-pt="Email" data-en="Email">Email</strong>
+                <a href="mailto:mrmito@gmail.com">mrmito@gmail.com</a>
+            </div>
+            <div class="contacto-item">
+                <strong data-pt="Instituição" data-en="Institution">Instituição</strong>
+                <a href="https://www.fba.ul.pt" target="_blank" rel="noopener">FBAUL — Lisboa</a>
+            </div>
+            <div class="contacto-item">
+                <strong data-pt="Ferramentas" data-en="Tools">Ferramentas</strong>
+                <a href="/radar.html" data-pt="Radar de CFPs" data-en="CFP Radar">Radar de CFPs</a>
+            </div>
+            <div class="contacto-item">
+                <strong data-pt="Plataforma" data-en="Platform">Plataforma</strong>
+                <a href="/gemeo-pro.html">Gémeo Digital</a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<footer>
+    <div class="footer-left">© Miguel Rodrigues · Lisboa</div>
+    <div class="footer-right">
+        <a href="/gemeo-digital.html" data-pt="↳ Gémeo (privado)" data-en="↳ Gémeo (private)">↳ Gémeo (privado)</a>
+    </div>
+</footer>
+
+<script>
+const API = "https://gemeo-servidor.vercel.app/api/site-publico";
+const ENSINO_API = "https://gemeo-servidor.vercel.app/api/ensino";
+let lang = "pt";
+let siteData = null;
+let ensinoData = null;
+
+// ── LANG ──
+function setLang(l) {
+    lang = l;
+    document.documentElement.lang = l;
+    document.querySelectorAll(".lang-btn").forEach(b => b.classList.toggle("active", b.textContent === l.toUpperCase()));
+    // Actualizar todos os elementos com data-pt / data-en
+    document.querySelectorAll("[data-pt]").forEach(el => {
+        const val = el.getAttribute("data-" + l);
+        if (val !== null) el.textContent = val;
+    });
+    // Nav links
+    document.querySelectorAll(".nav-link[data-pt]").forEach(el => {
+        el.textContent = el.getAttribute("data-" + l);
+    });
+    if (siteData) renderAll();
+}
+window.setLang = setLang;
+
+// ── LOAD ──
+async function loadData() {
+    const [s, e] = await Promise.allSettled([
+        fetch(API).then(r => r.json()),
+        fetch(ENSINO_API).then(r => r.json()),
+    ]);
+    siteData = s.status === "fulfilled" ? s.value : null;
+    ensinoData = e.status === "fulfilled" ? e.value : null;
+    renderAll();
+}
+
+function renderAll() {
+    renderSilo("escrita", "escrita-list");
+    renderSilo("cst", "cst-list");
+    renderSilo("produtos", "produtos-list");
+    renderEnsino();
+}
+
+// ── SILO ──
+function renderSilo(siloId, elId) {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    const itens = siteData?.silos?.[siloId]?.itens || [];
+    if (!itens.length) {
+        el.innerHTML = `<div class="empty">${lang === "pt" ? "Em breve." : "Coming soon."}</div>`;
+        return;
+    }
+    el.innerHTML = itens.map(item => itemHTML(item)).join("");
+}
+
+function itemHTML(item) {
+    const tags = [...(item.tags?.cat || []), ...(item.tags?.kw || [])].filter(Boolean);
+    const prazoHtml = item.prazo ? prazoLabel(item.prazo) : "";
+    const tagsHtml = tags.length ? `<div class="item-tags">${tags.map(t => `<span class="item-tag">${esc(t)}</span>`).join("")}</div>` : "";
+    const bodyText = (item.content || "").replace(/<[^>]+>/g, "").slice(0, 280).trim();
+    const bodyHtml = bodyText ? `<div class="item-body">${esc(bodyText)}${item.content?.length > 280 ? "…" : ""}</div>` : "";
+    return `<div class="item">
+        <div class="item-title">${esc(item.label)}</div>
+        ${bodyHtml}
+        ${tagsHtml}
+        ${prazoHtml}
+    </div>`;
+}
+
+// ── ENSINO ──
+function renderEnsino() {
+    const el = document.getElementById("aulas-list");
+    if (!el) return;
+
+    // Usar dados do site-publico (nós publicados de aulas) OU /api/ensino como fallback
+    const siloAulas = siteData?.silos?.aulas?.itens || [];
+    const escolasAPI = ensinoData?.escolas || [];
+
+    if (!siloAulas.length && !escolasAPI.length) {
+        el.innerHTML = `<div class="empty">${lang === "pt" ? "Em breve." : "Coming soon."}</div>`;
+        return;
+    }
+
+    // Prefer API ensino structure (grouped by school)
+    if (escolasAPI.length) {
+        el.innerHTML = escolasAPI.map(escola => {
+            if (!escola.cadeiras?.length) return "";
+            const cadeiraHtml = escola.cadeiras.map(c => {
+                const enriquecido = siloAulas.find(n => n.id === c.id);
+                const abordagem = enriquecido?.fuc_abordagem || c.conteudo || "";
+                const textoBody = abordagem.replace(/<[^>]+>/g, "").slice(0, 240).trim();
+                const fucLink = enriquecido?.fuc_url
+                    ? `<a href="${esc(enriquecido.fuc_url)}" target="_blank" rel="noopener" class="item-link">FUC →</a>`
+                    : "";
+                return `<div class="item">
+                    <div class="item-title">${esc(c.nome)}</div>
+                    ${textoBody ? `<div class="item-body">${esc(textoBody)}${abordagem.length > 240 ? "…" : ""}</div>` : ""}
+                    ${fucLink}
+                </div>`;
+            }).join("");
+            return `<div class="escola-block">
+                <div class="escola-name">${esc(escola.nome)}</div>
+                <div class="item-list">${cadeiraHtml}</div>
+            </div>`;
+        }).join("");
+    } else {
+        // Fallback: lista simples
+        el.innerHTML = `<div class="item-list">${siloAulas.map(item => itemHTML(item)).join("")}</div>`;
+    }
+}
+
+// ── UTILS ──
+function prazoLabel(prazo) {
+    const days = Math.round((new Date(prazo) - new Date()) / 86400000);
+    if (days < 0) return `<span class="item-prazo urgent">${lang === "pt" ? "Prazo ultrapassado" : "Deadline passed"}</span>`;
+    if (days <= 7) return `<span class="item-prazo urgent">${days}d</span>`;
+    if (days <= 30) return `<span class="item-prazo soon">${prazo}</span>`;
+    return `<span class="item-prazo ok">${prazo}</span>`;
+}
+function esc(s) { return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+
+// ── SCROLL SPY ──
+function updateNav() {
+    const sections = document.querySelectorAll("section[id]");
+    let current = "";
+    sections.forEach(s => { if (window.scrollY >= s.offsetTop - 80) current = s.id; });
+    document.querySelectorAll(".nav-link[data-section]").forEach(l => {
+        l.classList.toggle("active", l.dataset.section === current);
+    });
+}
+window.addEventListener("scroll", updateNav, { passive: true });
+
+loadData();
+</script>
+</body>
+</html>

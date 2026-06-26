@@ -432,6 +432,13 @@
                             <span class="node-status-label">Prazo</span>
                             <input type="date" class="prazo-input" id="prazo-input" onchange="savePrazo(this.value)" style="flex:1;margin:0;font-size:11px;padding:4px 7px;">
                         </div>
+                        <div class="node-status-row" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border-fine)">
+                            <span class="node-status-label">Publicado no site</span>
+                            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:11px;color:var(--text-muted)">
+                                <input type="checkbox" id="publicado-input" onchange="savePublicado(this.checked)" style="accent-color:var(--color-produtos);width:14px;height:14px;">
+                                <span id="publicado-label">não</span>
+                            </label>
+                        </div>
                     </div>
                     <input type="text" class="doc-title" id="editor-title" placeholder="Título do nó">
                     <div class="fmt-bar">
@@ -764,6 +771,7 @@
                     if (n.progresso != null) s.progresso = n.progresso;
                     if (n.prazo) s.prazo = n.prazo;
                     if (n.origem_sync) s.origem_sync = n.origem_sync;
+                    if (n.publicado) s.publicado = true;
                     return s;
                 }),
                 links: data.links.map(l => ({ source: (l.source.id||l.source), target: (l.target.id||l.target), provenance: l.provenance })),
@@ -1323,6 +1331,9 @@
             document.getElementById("progresso-val").textContent = prog > 0 ? prog + '%' : '—';
             document.getElementById("prazo-input").value = n.prazo || '';
             renderPrazoStatus(n.prazo || null);
+            const pub = !!n.publicado;
+            document.getElementById("publicado-input").checked = pub;
+            document.getElementById("publicado-label").textContent = pub ? "sim" : "não";
             renderTags(n); renderInter(n);
             ["block-tags","block-inter","block-meta"].forEach(bid=>{ const b=document.getElementById(bid); if(b){ b.classList.add("collapsed"); const tg=b.querySelector(".block-toggle"); if(tg) tg.innerHTML="&#9662;"; } });
             if (!coexistOK()) { document.getElementById("silo-panel").classList.remove("open"); }
@@ -1357,6 +1368,12 @@
             nodeById(activeNodeId).prazo = val || null;
             renderPrazoStatus(val);
             save(); render(); renderCockpit();
+        };
+        window.savePublicado = function(val) {
+            if (!activeNodeId) return;
+            nodeById(activeNodeId).publicado = !!val;
+            document.getElementById("publicado-label").textContent = val ? "sim" : "não";
+            save();
         };
         function renderPrazoStatus(prazo) {
             const el = document.getElementById("prazo-status");
