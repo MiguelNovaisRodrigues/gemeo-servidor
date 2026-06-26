@@ -57,7 +57,7 @@
         .save-state.error .save-dot { background: var(--color-cst); }
         .save-state.error .save-txt { color: var(--color-cst); }
         .save-txt { letter-spacing: 0.3px; }
-        .cluster-canvas { flex-grow: 1; height: 100%; background: #ffffff; position: relative; transition: background 0.3s; }
+        .cluster-canvas { flex-grow: 1; height: 100%; background: #ffffff; position: relative; transition: background 0.3s; overflow: auto; }
         .cluster-canvas.linking { background: #f7f5f0; }
         .link-banner { position: absolute; top: 18px; left: 50%; transform: translateX(-50%); background: var(--text-main); color: #fff; padding: 8px 18px; font-size: 11px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; z-index: 20; display: none; border-radius: 2px; }
         .cluster-canvas.linking .link-banner { display: block; }
@@ -620,13 +620,45 @@
     <script>
     window.addEventListener('DOMContentLoaded', () => {
         const SIDEBAR = 240, PANEL = 380, STORE_KEY = "gemeo_v2";
+        // Camadas de profundidade: 1 = frente (maior, mais intenso) → 4 = fundo (menor, mais claro)
         const SILOS = [
-            { id: "escrita",        label: "1. Escrita",            color: "var(--color-escrita)" },
-            { id: "aulas",          label: "2. Aulas",              color: "var(--color-aulas)" },
-            { id: "cst",            label: "3. Trabalho Artístico", color: "var(--color-cst)" },
-            { id: "produtos",       label: "4. Produtos",           color: "var(--color-produtos)" },
-            { id: "administrativo", label: "5. Administrativo",     color: "var(--color-administrativo)" }
+            { id: "escrita",        label: "Escrita",            color: "var(--color-escrita)", hex: "#111111", layer: 1 },
+            { id: "aulas",          label: "Aulas",              color: "var(--color-aulas)",   hex: "#777777", layer: 2 },
+            { id: "cst",            label: "Trabalho Artístico", color: "var(--color-cst)",     hex: "#9e2a2b", layer: 3 },
+            { id: "produtos",       label: "Produtos",           color: "var(--color-produtos)",hex: "#5a6b5d", layer: 4 },
+            { id: "administrativo", label: "Administrativo",     color: "var(--color-administrativo)", hex: "#6b5b95", layer: 4 }
         ];
+        // Cada camada: scale = factor de raio; lighten = quanto mistura com cinza claro (#e0e0e0)
+        const LAYER_CONFIG = {
+            1: { scale: 1.55, lighten: 0.00 },
+            2: { scale: 1.20, lighten: 0.30 },
+            3: { scale: 0.90, lighten: 0.55 },
+            4: { scale: 0.70, lighten: 0.72 },
+        };
+        // Y-alvo por camada (perspectiva: frente em baixo, fundo em cima)
+        const LAYER_Y = { 1: 0.72, 2: 0.57, 3: 0.43, 4: 0.28 };
+
+        function siloLayer(siloId) {
+            return (SILOS.find(s => s.id === siloId) || {}).layer || 1;
+        }
+        function layerCfg(siloId) {
+            return LAYER_CONFIG[siloLayer(siloId)] || LAYER_CONFIG[1];
+        }
+        // Cor ajustada por intensidade (mistura com cinza claro baseado em profundidade)
+        function siloLayerFill(siloId) {
+            const s = SILOS.find(x => x.id === siloId);
+            if (!s) return "#999";
+            const { hex, layer } = s;
+            const cfg = LAYER_CONFIG[layer] || LAYER_CONFIG[1];
+            if (cfg.lighten === 0) return hex;
+            const light = [224, 224, 224];
+            const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+            const t = cfg.lighten;
+            const tr = Math.round(r + (light[0]-r)*t);
+            const tg = Math.round(g + (light[1]-g)*t);
+            const tb = Math.round(b + (light[2]-b)*t);
+            return `rgb(${tr},${tg},${tb})`;
+        }
         const siloColor = id => {
             if (id === '__sonda__') return 'var(--color-sondas)';
             if (id === '__leituras__') return 'var(--color-leituras)';
@@ -779,7 +811,10 @@
         }
         const clusterZone = document.getElementById("cluster-zone");
         let height = clusterZone.clientHeight || window.innerHeight;
-        const svg = d3.select("#cluster-zone").append("svg").attr("width","100%").attr("height","100%");
+        const SVG_MIN_W = 1400, SVG_MIN_H = 1000;
+        const svg = d3.select("#cluster-zone").append("svg")
+            .attr("width", Math.max(clusterZone.clientWidth || window.innerWidth - 200, SVG_MIN_W))
+            .attr("height", Math.max(clusterZone.clientHeight || window.innerHeight, SVG_MIN_H));
         let linkSel, nodeSel, labelSel, progressSel, simulation;
         function nodeById(id){ return data.nodes.find(n => n.id === id); }
         function sharedTagCount(a, b) {
@@ -837,12 +872,25 @@
             }));
             return nodes;
         }
+        function svgW() { return Math.max(clusterZone.clientWidth||(window.innerWidth-SIDEBAR), SVG_MIN_W); }
+        function svgH() { return Math.max(clusterZone.clientHeight||window.innerHeight, SVG_MIN_H); }
         function buildSimulation() {
+            const w = svgW(), h = svgH();
             simulation = d3.forceSimulation(nodesForSimulation())
-                .force("link", d3.forceLink(data.links).id(d=>d.id).distance(110))
-                .force("charge", d3.forceManyBody().strength(-220))
-                .force("collision", d3.forceCollide().radius(46))
-                .force("center", d3.forceCenter((clusterZone.clientWidth||(window.innerWidth-SIDEBAR))/2, height/2));
+                .force("link", d3.forceLink(data.links).id(d=>d.id).distance(d => {
+                    // links entre camadas diferentes têm distância maior
+                    const la = siloLayer(d.source?.silo || d.source);
+                    const lb = siloLayer(d.target?.silo || d.target);
+                    return la === lb ? 95 : 130;
+                }))
+                .force("charge", d3.forceManyBody().strength(-240))
+                .force("collision", d3.forceCollide().radius(d => nodeBaseRadius(d) + 12))
+                .force("center", d3.forceCenter(w/2, h/2))
+                // Atração vertical por camada (perspectiva: layer 1 em baixo, 4 em cima)
+                .force("layerY", d3.forceY(d => {
+                    const layer = siloLayer(d.silo);
+                    return (LAYER_Y[layer] || 0.5) * h;
+                }).strength(d => d.type === "center" ? 0.55 : 0.18));
             simulation.on("tick", ticked);
         }
         function ticked() {
@@ -852,10 +900,11 @@
             if (progressSel) progressSel.attr("cx",d=>d.x).attr("cy",d=>d.y);
         }
         function nodeBaseRadius(d) {
-            if (d.type === "center") return 14;
+            const sc = layerCfg(d.silo).scale;
+            if (d.type === "center") return Math.round(14 * sc);
             if (d.type === "sonda") return 12;
             if (d.type === "leitura") { const l = leiturasData.find(x => x.id === d.leitura_id); return leituraRadius(l || {}); }
-            return 7;
+            return Math.max(5, Math.round(7 * sc));
         }
         function prazoColor(prazo) {
             if (!prazo) return '#4a8f5a';
@@ -957,7 +1006,7 @@
                    .attr("fill", d => {
                        if (d.type === "sonda") return 'var(--color-sondas)';
                        if (d.type === "leitura") { const l = leiturasData.find(x => x.id === d.leitura_id); return leituraFill(l || {}); }
-                       return siloColor(d.silo);
+                       return siloLayerFill(d.silo);
                    })
                    .attr("fill-opacity", d => d.type === "sonda" ? 0.15 : d.type === "leitura" ? 0.85 : 1)
                    .style("stroke", d => {
@@ -1029,9 +1078,8 @@
             if (linkMode) return;
             nodeSel.classed("silo-hot", d => silo!==null && d.silo===silo && d.type!=="sonda")
                    .attr("r", d => {
-                       if (d.type==="sonda") return 12;
-                       const base = d.type==="center"?14:7;
-                       return (silo!==null && d.silo===silo) ? base*1.45 : base;
+                       const base = nodeBaseRadius(d);
+                       return (silo!==null && d.silo===silo) ? base*1.3 : base;
                    });
             labelSel.style("font-weight", d => (silo!==null && d.silo===silo && d.type!=="sonda") ? "700" : "500");
         }
@@ -2012,8 +2060,10 @@
         }
         function recenter() {
             height=clusterZone.clientHeight||window.innerHeight;
-            const w=clusterZone.clientWidth||(window.innerWidth-SIDEBAR);
-            simulation.force("center", d3.forceCenter(w/2, height/2));
+            const w = svgW(), h = svgH();
+            svg.attr("width", w).attr("height", h);
+            simulation.force("center", d3.forceCenter(w/2, h/2));
+            simulation.force("layerY", d3.forceY(d => (LAYER_Y[siloLayer(d.silo)]||0.5)*h).strength(d=>d.type==="center"?0.55:0.18));
             simulation.alpha(0.3).restart();
         }
         window.addEventListener("resize", recenter);
