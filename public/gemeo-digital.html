@@ -213,8 +213,9 @@
         .node-leaf { stroke: #ffffff; stroke-width: 2px; }
         .node.dimmed { opacity: 0.32; }
         .node.silo-hot { opacity: 1; }
-        /* Anel de progresso */
-        .progress-ring { fill: none; stroke-width: 3; pointer-events: none; transition: opacity 0.45s; stroke-linecap: round; }
+        /* Anéis de nó */
+        .progress-ring { fill: none; stroke-width: 2.5; pointer-events: none; transition: opacity 0.45s; stroke-linecap: round; }  /* exterior: prazo */
+        .progress-inner { fill: none; stroke-width: 2; pointer-events: none; stroke-linecap: round; }  /* interior: progresso */
         .progress-ring.overdue { animation: pulse-ring 1.4s ease-in-out infinite; }
         @keyframes pulse-ring { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
         /* Progresso no editor */
@@ -898,6 +899,7 @@
             nodeSel.attr("cx",d=>d.x).attr("cy",d=>d.y);
             labelSel.attr("x",d=>d.x).attr("y",d=>d.y);
             if (progressSel) progressSel.attr("cx",d=>d.x).attr("cy",d=>d.y);
+            svg.selectAll("circle.progress-inner").attr("cx",d=>d.x).attr("cy",d=>d.y);
         }
         function nodeBaseRadius(d) {
             const sc = layerCfg(d.silo).scale;
@@ -1040,7 +1042,24 @@
                        return null;
                    });
 
-            // Anel de prazo — só nós com prazo definido; arco cresce de verde (longe) a vermelho (urgente)
+            // Anel interior: progresso (0–100%) — cor da camada do silo
+            const innerNodes = allNodes.filter(n => n.progresso != null && n.progresso > 0 && n.type === "leaf");
+            let innerSel = svg.selectAll("circle.progress-inner").data(innerNodes, d => d.id + '-inner');
+            innerSel.exit().remove();
+            innerSel = innerSel.enter().append("circle").merge(innerSel)
+                .attr("class", "progress-inner")
+                .attr("r", d => nodeBaseRadius(d) + 3)
+                .attr("stroke", d => siloLayerFill(d.silo))
+                .attr("stroke-dasharray", d => {
+                    const r = nodeBaseRadius(d) + 3;
+                    const circ = 2 * Math.PI * r;
+                    const pct = (d.progresso || 0) / 100;
+                    return `${circ * pct} ${circ}`;
+                })
+                .attr("stroke-dashoffset", d => -(2 * Math.PI * (nodeBaseRadius(d) + 3) / 4))
+                .attr("cx", d => d.x || 0).attr("cy", d => d.y || 0);
+
+            // Anel exterior: prazo — só nós com prazo definido; arco cresce de verde (longe) a vermelho (urgente)
             const ringNodes = allNodes.filter(n => n.prazo);
             progressSel = svg.selectAll("circle.progress-ring").data(ringNodes, d => d.id + '-ring');
             progressSel.exit().remove();
