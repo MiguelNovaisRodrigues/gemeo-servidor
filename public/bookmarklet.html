@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<title>Gémeo Digital — Bookmarklet</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif; max-width: 520px; margin: 60px auto; padding: 0 24px; color: #111; background: #fafafa; }
+  h1 { font-size: 18px; font-weight: 700; margin-bottom: 6px; }
+  p { font-size: 13px; color: #555; line-height: 1.6; }
+  .bookmarklet-btn {
+    display: inline-block; margin: 20px 0;
+    background: #111; color: #fff;
+    padding: 12px 20px; font-size: 13px; font-weight: 600;
+    border-radius: 3px; text-decoration: none; cursor: move;
+    border: none; letter-spacing: 0.3px;
+  }
+  .bookmarklet-btn:hover { background: #333; }
+  .step { display: flex; gap: 12px; align-items: flex-start; margin: 12px 0; font-size: 13px; }
+  .step-num { background: #111; color: #fff; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; margin-top: 1px; }
+  .note { background: #f5f5f7; border-left: 3px solid #111; padding: 10px 14px; font-size: 12px; color: #555; margin-top: 20px; line-height: 1.6; }
+  hr { border: none; border-top: 1px solid #e5e5e5; margin: 28px 0; }
+</style>
+</head>
+<body>
+<h1>📥 Capturar para o Gémeo</h1>
+<p>Instala este bookmarklet na barra do browser para capturar qualquer página com um clique.</p>
+
+<div class="step"><div class="step-num">1</div><div>Mostra a barra de favoritos no browser (⌘+Shift+B no Chrome/Arc)</div></div>
+<div class="step"><div class="step-num">2</div><div>Arrasta o botão abaixo para a barra de favoritos</div></div>
+<div class="step"><div class="step-num">3</div><div>Em qualquer página que quiseres capturar, clica nele</div></div>
+
+<br>
+<a class="bookmarklet-btn" href="javascript:(function(){var u=encodeURIComponent(location.href+'|||'+document.title);window.open('https://gemeo-servidor.vercel.app/?capturar='+u,'_blank','width=620,height=680,scrollbars=yes');})();">📥 → Gémeo</a>
+
+<div class="note">
+  <strong>Funciona com:</strong> páginas de CFPs, papers no ResearchGate/Academia.edu, DOIs, resultados de outras IAs (ChatGPT, Perplexity, Claude), emails abertos no browser, qualquer página com texto relevante.<br><br>
+  <strong>No telemóvel:</strong> acede a <code>gemeo-servidor.vercel.app</code> e usa o botão <strong>Capturar</strong> no menu lateral — funciona da mesma forma.
+</div>
+
+<hr>
+<p style="font-size:11px;color:#999">Gémeo Digital · Miguel Rodrigues · FBAUL</p>
+</body>
+</html>

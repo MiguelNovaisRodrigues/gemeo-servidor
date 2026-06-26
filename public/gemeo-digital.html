@@ -329,6 +329,7 @@
                     <button class="action-btn" id="conjunto-btn" onclick="setFocus(null)"><span class="ic">&#9728;</span> Vista de conjunto</button>
                     <button class="action-btn" onclick="openNewNode()"><span class="ic">+</span> Novo nó</button>
                     <button class="action-btn" id="link-btn" onclick="toggleLinkMode()"><span class="ic">&#10230;</span> Ligar nós</button>
+                    <button class="action-btn" onclick="openCapturar()"><span class="ic">📥</span> Capturar</button>
                     <button class="action-btn" onclick="openAI()"><span class="ic">✦</span> Perguntar à IA</button>
                     <button class="action-btn" onclick="openArquivo()"><span class="ic">📦</span> Arquivo Histórico</button>
                     <div class="action-row">
@@ -478,6 +479,21 @@
                     <button class="arquivo-tab" onclick="setArquivoTab('leituras')">Leituras</button>
                 </div>
                 <div id="arquivo-list" style="overflow-y: auto; flex-grow: 1;"></div>
+            </div>
+        </div>
+        <!-- ── DIALOG CAPTURAR ─────────────────────────────────── -->
+        <div class="dialog-back" id="capturar-dialog-back">
+            <div class="dialog" style="width:580px;max-height:82vh;overflow:hidden;display:flex;flex-direction:column;padding:28px;box-sizing:border-box;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-shrink:0">
+                    <h3 style="margin:0">📥 Capturar</h3>
+                    <button class="btn-close" onclick="closeCapturar()">Fechar</button>
+                </div>
+                <textarea id="capturar-input" placeholder="Cola aqui um URL, texto de outra IA, referência bibliográfica, descrição de chamada, DOI, ou qualquer coisa encontrada noutro sítio…" style="width:100%;height:110px;resize:vertical;font-family:inherit;font-size:13px;padding:10px;border:1px solid var(--border-fine);border-radius:2px;outline:none;box-sizing:border-box;margin-bottom:10px;background:#fafafa;line-height:1.5"></textarea>
+                <div style="display:flex;gap:8px;margin-bottom:16px;flex-shrink:0">
+                    <button class="dlg-ok" id="capturar-btn" onclick="analisarCaptura()" style="flex:1">Analisar</button>
+                    <button class="dlg-cancel" onclick="closeCapturar()">Cancelar</button>
+                </div>
+                <div id="capturar-resultado" style="overflow-y:auto;flex-grow:1"></div>
             </div>
         </div>
         <div class="dialog-back" id="ai-dialog-back">
@@ -1930,6 +1946,140 @@
             if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) window.sendAI();
         });
 
+        // ── CAPTURA UNIVERSAL ──────────────────────────────────────────
+        const CAPTURAR_URL = "https://gemeo-servidor.vercel.app/api/capturar";
+        let capturaItens = [];
+
+        window.openCapturar = function(prefill) {
+            capturaItens = [];
+            document.getElementById("capturar-resultado").innerHTML = "";
+            document.getElementById("capturar-input").value = prefill || "";
+            document.getElementById("capturar-dialog-back").classList.add("show");
+            if (!prefill) setTimeout(() => document.getElementById("capturar-input").focus(), 80);
+            else setTimeout(analisarCaptura, 200);
+        };
+        window.closeCapturar = function() {
+            document.getElementById("capturar-dialog-back").classList.remove("show");
+        };
+
+        window.analisarCaptura = async function() {
+            const raw = document.getElementById("capturar-input").value.trim();
+            if (!raw) return;
+            const btn = document.getElementById("capturar-btn");
+            btn.textContent = "A analisar…"; btn.disabled = true;
+            document.getElementById("capturar-resultado").innerHTML =
+                `<div style="padding:20px 0;text-align:center;color:var(--text-muted);font-size:12px">A classificar o conteúdo…</div>`;
+
+            // Detecta se é URL ou texto
+            const isUrl = /^https?:\/\//i.test(raw.split('\n')[0].trim());
+            const body = isUrl
+                ? { url: raw.split('\n')[0].trim(), texto: raw.split('\n').slice(1).join('\n').trim() || undefined }
+                : { texto: raw };
+
+            try {
+                const resp = await fetch(CAPTURAR_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(body),
+                });
+                const r = await resp.json();
+                capturaItens = r.itens || [];
+                renderCapturaResultado(r.resumo);
+            } catch(e) {
+                document.getElementById("capturar-resultado").innerHTML =
+                    `<div style="color:var(--color-cst);font-size:12px;padding:12px 0">Erro na análise. Tenta de novo.</div>`;
+            }
+            btn.textContent = "Analisar"; btn.disabled = false;
+        };
+
+        function renderCapturaResultado(resumo) {
+            const el = document.getElementById("capturar-resultado");
+            if (capturaItens.length === 0) {
+                el.innerHTML = `<div style="font-size:12px;color:var(--text-muted);padding:8px 0">${resumo || "Nada reconhecido. Tenta adicionar mais contexto."}</div>`;
+                return;
+            }
+            let html = `<div style="font-size:11px;color:var(--text-muted);margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border-fine)">${resumo}</div>`;
+            capturaItens.forEach((item, i) => {
+                const tipoBadge = item.tipo_item === 'sonda'
+                    ? `<span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--color-sondas);background:#fff8ec;border:1px solid #f0c870;padding:2px 7px;border-radius:2px">Chamada</span>`
+                    : item.tipo_item === 'leitura'
+                    ? `<span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--color-leituras);background:#e8f1fb;border:1px solid #aac8ef;padding:2px 7px;border-radius:2px">Leitura</span>`
+                    : `<span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--text-muted);background:#f5f5f7;border:1px solid var(--border-fine);padding:2px 7px;border-radius:2px">Nó · ${item.silo || 'escrita'}</span>`;
+                const titulo = item.titulo || item.label || "(sem título)";
+                const meta = item.tipo_item === 'sonda'
+                    ? [item.revista, item.prazo ? 'Prazo ' + item.prazo : null].filter(Boolean).join(' · ')
+                    : item.tipo_item === 'leitura'
+                    ? [(item.autores||[]).slice(0,2).join(', '), item.ano, item.revista].filter(Boolean).join(' · ')
+                    : item.descricao || '';
+                html += `<div style="padding:12px 0;border-bottom:1px solid var(--border-fine)">
+                    <div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:6px">
+                        ${tipoBadge}
+                        <span style="font-size:13px;font-weight:500;flex:1">${titulo}</span>
+                    </div>
+                    ${meta ? `<div style="font-size:11px;color:var(--text-muted);margin-bottom:8px">${meta}</div>` : ''}
+                    ${item.descricao && item.tipo_item !== 'node' ? `<div style="font-size:12px;line-height:1.5;margin-bottom:8px">${item.descricao}</div>` : ''}
+                    <button class="dlg-ok" onclick="confirmarCaptura(${i})" style="font-size:11px;padding:5px 14px">+ Adicionar ao Gémeo</button>
+                </div>`;
+            });
+            el.innerHTML = html;
+        }
+
+        window.confirmarCaptura = async function(i) {
+            const item = capturaItens[i];
+            if (!item) return;
+            if (item.tipo_item === 'sonda') {
+                sondasData.push({
+                    id: "cap_" + Date.now(),
+                    titulo: item.titulo, revista: item.revista || "",
+                    prazo: item.prazo || "", areas: item.areas || [],
+                    descricao: item.descricao || "", url: item.url || null,
+                    status: "pendente", origem_sync: "captura",
+                });
+                await saveSondas();
+            } else if (item.tipo_item === 'leitura') {
+                leiturasData.push({
+                    id: "cap_" + Date.now(),
+                    titulo: item.titulo, autores: item.autores || [],
+                    ano: item.ano || null, revista: item.revista || null,
+                    doi: item.doi || null, url_doi: item.doi ? "https://doi.org/" + item.doi : null,
+                    resumo: item.resumo || null, tipo: "contemporaneo",
+                    relevancia: item.relevancia || 7, status: "selecionada",
+                    notas: "", data_criacao: new Date().toISOString().slice(0,10),
+                    data_leitura: null, sonda_id: null, origem_sync: "captura",
+                });
+                await saveLeituras();
+            } else {
+                // node
+                const id = "cap_" + Date.now();
+                data.nodes.push({
+                    id, type: "leaf",
+                    silo: item.silo || "escrita",
+                    label: item.label || item.titulo || "Captura",
+                    origin: "manuscrito", origem_sync: "captura",
+                    tags: { cat: [], kw: [], free: [] },
+                    content: item.descricao || "",
+                    prazo: item.prazo || undefined,
+                });
+                save();
+            }
+            // Remove item da lista e mostra confirmação
+            capturaItens[i] = { ...item, _adicionado: true };
+            const btns = document.getElementById("capturar-resultado").querySelectorAll(".dlg-ok");
+            if (btns[i]) { btns[i].textContent = "✓ Adicionado"; btns[i].disabled = true; btns[i].style.background = "#5a6b5d"; }
+            render(); renderCockpit();
+            showToast("Adicionado ao Gémeo ✓");
+        };
+
+        // Bookmarklet: detecta ?capturar= na URL ao carregar
+        (function() {
+            const params = new URLSearchParams(window.location.search);
+            const cap = params.get("capturar");
+            if (cap) {
+                window.__capturarPrefill = decodeURIComponent(cap);
+                window.history.replaceState({}, "", window.location.pathname);
+            }
+        })();
+
         buildSiloMenu(); buildSimulation(); render(); renderCockpit(); updateSyncBar(); loadSondas(); loadLeituras();
         // Notificações de prazos
         setTimeout(() => {
@@ -1953,6 +2103,11 @@
             try { const snap = stripData(); localStorage.setItem(STORE_KEY, JSON.stringify(snap)); pushBackup(snap); localState="saved"; setSaveState("saved", "Guardado"); }
             catch(e){ localState="error"; setSaveState("error", "Armazenamento bloqueado — exporta!"); }
         }
+        // Abre captura se vier do bookmarklet
+        if (window.__capturarPrefill) {
+            setTimeout(() => openCapturar(window.__capturarPrefill), 800);
+        }
+
         setSaveState("dirty", "A ligar ao Drive…");
         (async function syncFromDrive(){
             try {
