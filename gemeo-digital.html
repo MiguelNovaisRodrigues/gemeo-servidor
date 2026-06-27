@@ -1,0 +1,1040 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gémeo Digital - Miguel Rodrigues</title>
+    <script src="https://cdn.jsdelivr.net/npm/d3@7.8.5/dist/d3.min.js"></script>
+    <style>
+        :root {
+            --bg-app: #fcfcfc;
+            --bg-sidebar: #ffffff;
+            --border-fine: #e5e5e5;
+            --text-main: #111111;
+            --text-muted: #8e8e93;
+            --color-escrita: #111111;
+            --color-aulas: #777777;
+            --color-cst: #9e2a2b;
+            --color-produtos: #5a6b5d;
+            --color-sondas: #b86e00;
+        }
+        body, html {
+            margin: 0; padding: 0; width: 100%; height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+            background-color: var(--bg-app); color: var(--text-main);
+            overflow: hidden; -webkit-font-smoothing: antialiased;
+        }
+        .app-container { display: flex; width: 100vw; height: 100vh; position: relative; }
+        .sidebar {
+            width: 240px; height: 100%; background: var(--bg-sidebar);
+            border-right: 1px solid var(--border-fine);
+            display: flex; flex-direction: column; justify-content: space-between;
+            box-sizing: border-box; z-index: 10; flex-shrink: 0;
+        }
+        .brand { padding: 25px 24px; font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; border-bottom: 1px solid var(--border-fine); }
+        .silo-menu { list-style: none; padding: 0; margin: 0; }
+        .silo-item { padding: 15px 24px; font-size: 13px; color: var(--text-muted); font-weight: 500; border-bottom: 1px solid var(--border-fine); display: flex; align-items: center; gap: 10px; cursor: pointer; user-select: none; }
+        .silo-item:hover { background: #fafafa; }
+        .silo-item.active { color: var(--text-main); font-weight: 600; background: #f5f5f7; }
+        .silo-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+        .actions-zone { padding: 16px 20px; border-top: 1px solid var(--border-fine); display: flex; flex-direction: column; gap: 8px; }
+        .action-btn { display: flex; align-items: center; gap: 9px; width: 100%; background: transparent; border: 1px solid var(--border-fine); padding: 9px 12px; font-size: 12px; font-weight: 500; cursor: pointer; color: var(--text-main); text-align: left; border-radius: 2px; font-family: inherit; transition: background 0.15s, border-color 0.15s; }
+        .action-btn:hover { background: #f5f5f7; border-color: #d0d0d0; }
+        .action-btn .ic { width: 14px; text-align: center; font-size: 13px; opacity: 0.6; }
+        .action-btn.armed { background: var(--text-main); color: #fff; border-color: var(--text-main); }
+        .action-btn.armed .ic { opacity: 1; }
+        .action-row { display: flex; gap: 8px; }
+        .action-row .action-btn { flex: 1; justify-content: center; }
+        .foot { padding: 18px 24px; font-size: 10px; color: var(--text-muted); letter-spacing: 0.5px; }
+        .save-state { display: flex; align-items: center; gap: 8px; padding: 12px 20px 0; font-size: 11px; font-weight: 500; }
+        .save-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; transition: background 0.3s; }
+        .save-state.saved .save-dot { background: var(--color-produtos); }
+        .save-state.saved .save-txt { color: var(--text-muted); }
+        .save-state.dirty .save-dot { background: #d99000; }
+        .save-state.dirty .save-txt { color: #a06a00; }
+        .save-state.error .save-dot { background: var(--color-cst); }
+        .save-state.error .save-txt { color: var(--color-cst); }
+        .save-txt { letter-spacing: 0.3px; }
+        .cluster-canvas { flex-grow: 1; height: 100%; background: #ffffff; position: relative; transition: background 0.3s; }
+        .cluster-canvas.linking { background: #f7f5f0; }
+        .link-banner { position: absolute; top: 18px; left: 50%; transform: translateX(-50%); background: var(--text-main); color: #fff; padding: 8px 18px; font-size: 11px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; z-index: 20; display: none; border-radius: 2px; }
+        .cluster-canvas.linking .link-banner { display: block; }
+        .editor-panel { width: 0px; height: 100%; background: var(--bg-sidebar); border-left: 0 solid var(--border-fine); transition: width 0.4s cubic-bezier(0.25, 1, 0.5, 1); display: flex; flex-direction: column; box-sizing: border-box; position: relative; z-index: 5; overflow: hidden; flex-shrink: 0; }
+        .editor-panel.open { width: 580px; border-left: 1px solid var(--border-fine); }
+        .silo-panel {
+            width: 0px; height: 100%; background: var(--bg-sidebar);
+            border-right: 0 solid var(--border-fine);
+            transition: width 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+            display: flex; flex-direction: column; box-sizing: border-box;
+            position: relative; z-index: 6; overflow: hidden; flex-shrink: 0;
+        }
+        .silo-panel.open { width: 420px; border-right: 1px solid var(--border-fine); }
+        .silo-panel-header { height: 60px; border-bottom: 1px solid var(--border-fine); display: flex; align-items: center; justify-content: space-between; padding: 0 30px; flex-shrink: 0; }
+        .silo-panel-title { display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 700; }
+        .silo-panel-title .sp-dot { width: 11px; height: 11px; border-radius: 50%; }
+        .silo-panel-content { padding: 34px 38px; overflow-y: auto; flex-grow: 1; }
+        .sp-summary { padding-bottom: 24px; margin-bottom: 24px; border-bottom: 1px solid var(--border-fine); }
+        .sp-stat { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; font-size: 12.5px; }
+        .sp-stat .lbl { color: var(--text-muted); }
+        .sp-stat .val { font-weight: 600; }
+        .sp-stat .val.bridge { color: var(--color-cst); }
+        .sp-node { display: flex; justify-content: space-between; align-items: center; padding: 11px 0; border-bottom: 1px dashed var(--border-fine); font-size: 13px; cursor: pointer; }
+        .sp-node:hover .sp-node-name { color: var(--color-cst); }
+        .sp-node-name { font-weight: 500; }
+        .sp-node-meta { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.4px; }
+        .sp-actions { margin-top: 26px; display: flex; flex-direction: column; gap: 8px; }
+        .editor-header { height: 60px; border-bottom: 1px solid var(--border-fine); display: flex; align-items: center; justify-content: space-between; padding: 0 30px; flex-shrink: 0; }
+        .editor-content { padding: 40px 50px; overflow-y: auto; flex-grow: 1; display: flex; flex-direction: column; }
+        .doc-title { font-size: 20px; font-weight: 700; border: none; width: 100%; outline: none; padding-bottom: 18px; margin-bottom: 22px; letter-spacing: -0.5px; border-bottom: 1px solid var(--border-fine); font-family: inherit; color: var(--text-main); }
+        .doc-body { font-size: 15px; line-height: 1.8; outline: none; text-align: justify; color: #111111; padding-bottom: 28px; margin-bottom: 28px; border-bottom: 1px solid var(--border-fine); min-height: 80px; }
+        .doc-body b, .doc-body strong { font-weight: 700; }
+        .doc-body h3 { font-size: 16px; font-weight: 700; letter-spacing: -0.3px; margin: 18px 0 8px; }
+        .doc-body ul { padding-left: 22px; margin: 10px 0; }
+        .doc-body li { margin: 3px 0; }
+        .fmt-bar { display: flex; gap: 4px; margin-bottom: 14px; }
+        .fmt-btn { width: 30px; height: 28px; border: 1px solid var(--border-fine); background: #fff; cursor: pointer; font-size: 13px; color: var(--text-main); border-radius: 2px; font-family: Georgia, serif; line-height: 1; transition: background 0.12s; }
+        .fmt-btn:hover { background: #f5f5f7; }
+        .fmt-btn.b { font-weight: 700; }
+        .fmt-btn.i { font-style: italic; }
+        .fmt-btn.h { font-weight: 700; font-size: 12px; }
+        .fmt-btn.ul { font-size: 14px; }
+        .section-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-muted); margin-bottom: 14px; }
+        .block-head { display: flex; align-items: center; justify-content: space-between; cursor: pointer; user-select: none; }
+        .block-head .section-label { margin-bottom: 0; }
+        .block-toggle { font-size: 12px; color: var(--text-muted); transition: transform 0.2s; }
+        .block-body { margin-top: 14px; max-height: 1500px; overflow: hidden; transition: max-height 0.3s ease, opacity 0.2s, margin-top 0.2s; }
+        .block.collapsed .block-body { max-height: 0 !important; opacity: 0; margin-top: 0; pointer-events: none; }
+        .block { padding-bottom: 26px; margin-bottom: 26px; border-bottom: 1px solid var(--border-fine); }
+        .block:last-child { border-bottom: none; }
+        .tag-row { display: flex; flex-wrap: wrap; gap: 7px; align-items: center; }
+        .tag { font-size: 11px; padding: 4px 11px; border-radius: 20px; cursor: pointer; border: 1px solid var(--border-fine); background: #fff; color: var(--text-muted); user-select: none; transition: all 0.12s; font-weight: 500; }
+        .tag:hover { border-color: #c0c0c0; }
+        .tag.on { color: #fff; font-weight: 600; }
+        .tag.on.fam-cat { background: #4a4a4a; border-color: #4a4a4a; }
+        .tag.on.fam-kw  { background: var(--color-cst); border-color: var(--color-cst); }
+        .tag.on.fam-free{ background: var(--color-produtos); border-color: var(--color-produtos); }
+        .tag-add { font-size: 11px; padding: 4px 10px; border: 1px dashed #c8c8c8; background: transparent; color: var(--text-muted); cursor: pointer; border-radius: 20px; font-family: inherit; }
+        .tag-fam-title { font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: #b0b0b0; margin: 14px 0 8px; font-weight: 600; }
+        .tag-fam-title:first-child { margin-top: 0; }
+        .inter-row { display: flex; justify-content: space-between; align-items: center; padding: 9px 0; border-bottom: 1px dashed var(--border-fine); font-size: 12.5px; }
+        .inter-row:last-child { border-bottom: none; }
+        .inter-name { font-weight: 500; }
+        .inter-right { display: flex; align-items: center; gap: 10px; }
+        .inter-prov { font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; padding: 2px 8px; border-radius: 10px; font-weight: 600; }
+        .prov-sug { color: var(--text-muted); border: 1px dashed #c8c8c8; }
+        .prov-conf { color: #fff; background: var(--color-cst); }
+        .inter-x { cursor: pointer; color: var(--text-muted); font-size: 14px; line-height: 1; }
+        .inter-x:hover { color: var(--color-cst); }
+        .inter-empty { font-size: 12px; color: var(--text-muted); font-style: italic; }
+        .sug-accept { cursor: pointer; color: var(--color-produtos); font-size: 11px; font-weight: 600; }
+        .meta-row { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; font-size: 12px; }
+        .meta-label { font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); }
+        .meta-value { font-weight: 500; }
+        .btn-close, .btn-del { background: transparent; border: 1px solid var(--text-main); padding: 6px 14px; font-size: 11px; font-weight: 600; cursor: pointer; text-transform: uppercase; letter-spacing: 0.5px; font-family: inherit; color: var(--text-main); }
+        .btn-close:hover { background: var(--text-main); color: #ffffff; }
+        .btn-del { border-color: var(--color-cst); color: var(--color-cst); margin-top: 30px; align-self: flex-start; }
+        .btn-del:hover { background: var(--color-cst); color: #fff; }
+        .node { cursor: pointer; transition: opacity 0.45s; }
+        .node-center { stroke: #ffffff; stroke-width: 2.5px; }
+        .node-leaf { stroke: #ffffff; stroke-width: 2px; }
+        .node.dimmed { opacity: 0.32; }
+        .node.silo-hot { opacity: 1; }
+        .link { stroke: #111111; stroke-opacity: 0.16; transition: opacity 0.45s; }
+        .link.structural { stroke-opacity: 0.10; }
+        .link.bridge { stroke: var(--color-cst); stroke-opacity: 0.55; }
+        .link.suggested { stroke: var(--color-cst); stroke-opacity: 0.28; stroke-dasharray: 4 4; }
+        .link.dimmed { opacity: 0.28; }
+        .node-text { font-size: 11px; font-weight: 500; fill: var(--text-main); pointer-events: none; transition: opacity 0.45s; }
+        .node-text.dimmed { opacity: 0.38; }
+        .dialog-back { position: absolute; inset: 0; background: rgba(0,0,0,0.25); z-index: 50; display: none; align-items: center; justify-content: center; }
+        .dialog-back.show { display: flex; }
+        .dialog { background: #fff; border: 1px solid var(--border-fine); width: 360px; padding: 28px; box-sizing: border-box; }
+        .dialog h3 { margin: 0 0 18px; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+        .dialog label { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); margin: 14px 0 6px; font-weight: 600; }
+        .dialog input, .dialog select { width: 100%; box-sizing: border-box; padding: 9px 11px; font-size: 13px; border: 1px solid var(--border-fine); font-family: inherit; outline: none; border-radius: 2px; }
+        .dialog input:focus, .dialog select:focus { border-color: var(--text-main); }
+        .dialog-actions { display: flex; gap: 10px; margin-top: 24px; }
+        .dialog-actions button { flex: 1; padding: 10px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; border-radius: 2px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .dlg-ok { background: var(--text-main); color: #fff; border: 1px solid var(--text-main); }
+        .dlg-cancel { background: #fff; color: var(--text-main); border: 1px solid var(--border-fine); }
+        /* Sondas (Chamadas de Artigos) */
+        .node-sonda { cursor: pointer; }
+        .sonda-card { padding: 16px 0; border-bottom: 1px solid var(--border-fine); }
+        .sonda-card:last-child { border-bottom: none; }
+        .sonda-titulo { font-size: 14px; font-weight: 600; margin-bottom: 6px; color: var(--text-main); }
+        .sonda-meta { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
+        .sonda-prazo { font-size: 11px; color: var(--text-muted); font-weight: 500; }
+        .sonda-prazo.urgente { color: var(--color-cst); font-weight: 700; }
+        .sonda-areas { font-size: 11px; color: var(--text-muted); }
+        .sonda-desc { font-size: 13px; line-height: 1.6; color: #333; margin-bottom: 8px; }
+        .sonda-conexao { font-size: 12px; line-height: 1.6; color: var(--text-muted); margin-bottom: 10px; font-style: italic; border-left: 2px solid var(--border-fine); padding-left: 10px; }
+        .sonda-btns { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 4px; }
+        .sonda-btn { padding: 5px 12px; font-size: 11px; font-weight: 600; cursor: pointer; text-transform: uppercase; letter-spacing: 0.5px; font-family: inherit; border-radius: 2px; }
+        .sonda-btn-preparar { background: var(--text-main); color: #fff; border: 1px solid var(--text-main); }
+        .sonda-btn-enviada { background: var(--color-produtos); color: #fff; border: 1px solid var(--color-produtos); }
+        .sonda-btn-rejeitar { background: transparent; border: 1px solid #ccc; color: var(--text-muted); }
+        .sonda-btn-rejeitar:hover { border-color: var(--color-cst); color: var(--color-cst); }
+        .sonda-status-badge { font-size: 10px; padding: 2px 8px; border-radius: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; flex-shrink: 0; }
+        .badge-pendente { color: #8a5800; background: #fff3d4; border: 1px solid #f0c060; }
+        .badge-ativa { color: #fff; background: var(--color-sondas); }
+        .sonda-link { font-size: 11px; color: var(--color-cst); text-decoration: none; font-weight: 500; }
+        .sonda-link:hover { text-decoration: underline; }
+        .sondas-empty { font-size: 13px; color: var(--text-muted); font-style: italic; text-align: center; padding: 40px 0; }
+        /* IA */
+        .ai-textarea { width: 100%; box-sizing: border-box; padding: 9px 11px; font-size: 13px; border: 1px solid var(--border-fine); font-family: inherit; outline: none; border-radius: 2px; resize: vertical; min-height: 80px; }
+        .ai-textarea:focus { border-color: var(--text-main); }
+        .ai-response { margin-top: 16px; padding: 12px; background: #f5f5f7; font-size: 13px; line-height: 1.7; border-radius: 2px; white-space: pre-wrap; display: none; max-height: 280px; overflow-y: auto; }
+        .ai-response.show { display: block; }
+        .ai-loading { color: var(--text-muted); font-style: italic; }
+        /* Toast */
+        .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--text-main); color: #fff; padding: 10px 20px; font-size: 12px; font-weight: 500; border-radius: 3px; z-index: 200; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+        .toast.show { opacity: 1; }
+    </style>
+</head>
+<body>
+    <div class="toast" id="toast"></div>
+    <div class="app-container">
+        <div class="sidebar">
+            <div>
+                <div class="brand">M. Rodrigues</div>
+                <ul class="silo-menu" id="silo-menu"></ul>
+            </div>
+            <div>
+                <div class="save-state saved" id="save-state">
+                    <span class="save-dot"></span><span class="save-txt" id="save-txt">Guardado</span>
+                </div>
+                <div class="actions-zone">
+                    <button class="action-btn" id="conjunto-btn" onclick="setFocus(null)"><span class="ic">&#9728;</span> Vista de conjunto</button>
+                    <button class="action-btn" onclick="openNewNode()"><span class="ic">+</span> Novo nó</button>
+                    <button class="action-btn" id="link-btn" onclick="toggleLinkMode()"><span class="ic">&#10230;</span> Ligar nós</button>
+                    <button class="action-btn" onclick="openAI()"><span class="ic">✦</span> Perguntar à IA</button>
+                    <div class="action-row">
+                        <button class="action-btn" onclick="exportData()"><span class="ic">&#8615;</span> Exportar</button>
+                        <button class="action-btn" onclick="document.getElementById('import-file').click()"><span class="ic">&#8613;</span> Importar</button>
+                    </div>
+                    <input type="file" id="import-file" accept="application/json" style="display:none" onchange="importData(event)">
+                </div>
+                <div class="foot">SISTEMA AUTÓNOMO</div>
+            </div>
+        </div>
+        <div class="silo-panel" id="silo-panel">
+            <div class="silo-panel-header">
+                <div class="silo-panel-title"><span class="sp-dot" id="sp-dot"></span><span id="sp-title">Silo</span></div>
+                <button class="btn-close" onclick="closeSiloPanel()">Fechar</button>
+            </div>
+            <div class="silo-panel-content">
+                <div class="sp-summary" id="sp-summary"></div>
+                <div class="section-label">Nós deste silo</div>
+                <div id="sp-list"></div>
+                <div class="sp-actions">
+                    <button class="action-btn" id="sp-new" onclick="newNodeInSilo()"><span class="ic">+</span> Novo nó neste silo</button>
+                    <button class="action-btn" onclick="setFocus(null)"><span class="ic">&#9728;</span> Vista de conjunto</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="cluster-canvas" id="cluster-zone">
+            <div class="link-banner" id="link-banner">Modo ligação · clica em dois nós · Esc para sair</div>
+        </div>
+        <div class="editor-panel" id="editor-zone">
+            <div class="editor-header">
+                <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;" id="silo-indicator">FILA ATIVA</div>
+                <button class="btn-close" onclick="closeEditor()">Fechar</button>
+            </div>
+            <div class="editor-content">
+                <input type="text" class="doc-title" id="editor-title" placeholder="Título do nó">
+                <div class="fmt-bar">
+                    <button class="fmt-btn b" title="Negrito" onmousedown="fmt(event,'bold')">B</button>
+                    <button class="fmt-btn i" title="Itálico" onmousedown="fmt(event,'italic')">I</button>
+                    <button class="fmt-btn h" title="Título" onmousedown="fmt(event,'formatBlock','h3')">H</button>
+                    <button class="fmt-btn ul" title="Lista" onmousedown="fmt(event,'insertUnorderedList')">&#8226;</button>
+                </div>
+                <div class="doc-body" contenteditable="true" id="editor-body"></div>
+                <div class="block collapsed" id="block-tags">
+                    <div class="block-head" onclick="toggleBlock('block-tags')"><span class="section-label">Etiquetas</span><span class="block-toggle">&#9662;</span></div>
+                    <div class="block-body"><div id="tags-area"></div></div>
+                </div>
+                <div class="block collapsed" id="block-inter">
+                    <div class="block-head" onclick="toggleBlock('block-inter')"><span class="section-label">Intersecções</span><span class="block-toggle">&#9662;</span></div>
+                    <div class="block-body"><div id="inter-area"></div></div>
+                </div>
+                <div class="block collapsed" id="block-meta">
+                    <div class="block-head" onclick="toggleBlock('block-meta')"><span class="section-label">Metadados</span><span class="block-toggle">&#9662;</span></div>
+                    <div class="block-body">
+                        <div class="meta-row"><span class="meta-label">Silo de origem</span><span class="meta-value" id="meta-parent"></span></div>
+                        <div class="meta-row"><span class="meta-label">Natureza</span><span class="meta-value" id="meta-origin"></span></div>
+                        <div class="meta-row"><span class="meta-label">Estatuto de dados</span><span class="meta-value" style="color: var(--text-muted);">Soberania fechada</span></div>
+                    </div>
+                </div>
+                <button class="btn-del" onclick="deleteCurrentNode()">Apagar nó</button>
+            </div>
+        </div>
+        <div class="dialog-back" id="dialog-back">
+            <div class="dialog">
+                <h3 id="dlg-title">Novo nó</h3>
+                <label>Título</label>
+                <input type="text" id="dlg-name" placeholder="Nome do nó">
+                <label>Silo</label>
+                <select id="dlg-silo"></select>
+                <label>Natureza</label>
+                <select id="dlg-origin">
+                    <option value="manuscrito">Manuscrito (meu)</option>
+                    <option value="documento">Documento (corpus / Drive)</option>
+                </select>
+                <div class="dialog-actions">
+                    <button class="dlg-cancel" onclick="closeDialog()">Cancelar</button>
+                    <button class="dlg-ok" onclick="confirmNewNode()">Criar</button>
+                </div>
+            </div>
+        </div>
+        <div class="dialog-back" id="sondas-dialog-back">
+            <div class="dialog" style="width: 640px; max-height: 80vh; overflow: hidden; display: flex; flex-direction: column; padding: 28px; box-sizing: border-box;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; flex-shrink: 0;">
+                    <h3 style="margin: 0;">⬡ Chamadas Ativas</h3>
+                    <button class="btn-close" onclick="closeSondasDialog()">Fechar</button>
+                </div>
+                <div id="sondas-list" style="overflow-y: auto; flex-grow: 1;"></div>
+            </div>
+        </div>
+        <div class="dialog-back" id="ai-dialog-back">
+            <div class="dialog" style="width: 440px;">
+                <h3>Perguntar à IA</h3>
+                <label>Pergunta</label>
+                <textarea class="ai-textarea" id="ai-input" placeholder="Ex: Que ligações faltam explorar? Que nó devo criar a seguir? Resume o silo de Escrita."></textarea>
+                <div class="ai-response" id="ai-response"></div>
+                <div class="dialog-actions">
+                    <button class="dlg-cancel" onclick="closeAIDialog()">Fechar</button>
+                    <button class="dlg-ok" id="ai-send-btn" onclick="sendAI()">Enviar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+    window.addEventListener('DOMContentLoaded', () => {
+        const SIDEBAR = 240, PANEL = 580, STORE_KEY = "gemeo_v2";
+        const SILOS = [
+            { id: "escrita",   label: "1. Escrita",            color: "var(--color-escrita)" },
+            { id: "aulas",     label: "2. Aulas",              color: "var(--color-aulas)" },
+            { id: "cst",       label: "3. Trabalho Artístico", color: "var(--color-cst)" },
+            { id: "produtos",  label: "4. Produtos",           color: "var(--color-produtos)" }
+        ];
+        const siloColor = id => {
+            if (id === '__sonda__') return 'var(--color-sondas)';
+            return (SILOS.find(s => s.id === id) || {}).color || "#999";
+        };
+        const siloLabel = id => (SILOS.find(s => s.id === id) || {}).label || id;
+        const TAGS = {
+            cat:  { title: "Categorias administrativas", fam: "fam-cat",  items: ["candidatura","prazo","publicação","ensino","exposição","financiamento"] },
+            kw:   { title: "Palavras-chave de investigação", fam: "fam-kw", items: ["paisagem","repetição","fragmentação","performatividade","memória","imagem técnica"] },
+            free: { title: "Etiquetas livres", fam: "fam-free", items: [] }
+        };
+        const DEFAULT_DATA = {
+            nodes: [
+                { id: "n_escrita", type: "center", silo: "escrita",  label: "Silo Escrita" },
+                { id: "n_aulas",   type: "center", silo: "aulas",    label: "Silo Aulas" },
+                { id: "n_cst",     type: "center", silo: "cst",      label: "Silo Artístico (CST)" },
+                { id: "n_prod",    type: "center", silo: "produtos", label: "Silo Produtos" },
+                { id: "l_ejmap", type: "leaf", silo: "escrita", label: "Abstract EJMAP", origin: "manuscrito",
+                  tags: { cat:["publicação"], kw:["imagem técnica","memória"], free:[] },
+                  content: "Este artigo propõe uma discussão em torno da visualidade contemporânea no cenário de transição para modelos de simulação algorítmica. O foco central reside na desestabilização do programa do aparelho, tal como formulado por Vilém Flusser, quando confrontado com a saturação de dados que caracteriza a cultura visual atual." },
+                { id: "l_recensao", type: "leaf", silo: "escrita", label: "Recensão Crítica", origin: "manuscrito",
+                  tags: { cat:["publicação"], kw:["imagem técnica"], free:[] },
+                  content: "Notas de leitura sobre as condições materiais de receção e visualização na era dos ecrãs pretos e da dispersão cognitiva." },
+                { id: "l_iade", type: "leaf", silo: "aulas", label: "Sequenciação IADE", origin: "manuscrito",
+                  tags: { cat:["ensino"], kw:["repetição","fragmentação"], free:[] },
+                  content: "Planificação de exercícios de atrito visual e sequenciação narrativa para o laboratório de fotografia digital." },
+                { id: "l_interiores", type: "leaf", silo: "cst", label: "Imagens Interiores [CST]", origin: "manuscrito",
+                  tags: { cat:["exposição"], kw:["paisagem","memória"], free:[] },
+                  content: "Registo documental focado no interior profundo de Portugal. Mapeamento visual da transição entre o idealismo dos anos 80 e a distopia cinzenta contemporânea." }
+            ],
+            links: [
+                { source: "l_ejmap", target: "n_escrita", provenance: "structural" },
+                { source: "l_recensao", target: "n_escrita", provenance: "structural" },
+                { source: "l_iade", target: "n_aulas", provenance: "structural" },
+                { source: "l_interiores", target: "n_cst", provenance: "structural" },
+                { source: "n_prod", target: "n_cst", provenance: "structural" },
+                { source: "l_ejmap", target: "l_interiores", provenance: "confirmed" }
+            ]
+        };
+        const STORE_BAK = "gemeo_v2_bak";
+        const DRIVE_URL = "https://gemeo-servidor.vercel.app/api/dados";
+        const AI_URL = "https://gemeo-servidor.vercel.app/api/ai";
+        const SONDAS_URL = "https://gemeo-servidor.vercel.app/api/sondas";
+        const REJEICOES_URL = "https://gemeo-servidor.vercel.app/api/rejeicoes";
+        const SONDA_NODE = { id: '__sonda__', type: 'sonda', silo: '__sonda__', label: 'Chamadas' };
+        let sondasData = [];
+        let driveTimer = null, driveState = "idle";
+
+        // --- Toast ---
+        function showToast(msg, dur) {
+            const t = document.getElementById("toast");
+            t.textContent = msg; t.classList.add("show");
+            setTimeout(() => t.classList.remove("show"), dur || 2800);
+        }
+
+        function isValid(d) { return d && Array.isArray(d.nodes) && Array.isArray(d.links) && d.nodes.length > 0; }
+        function loadBackups() { try { const r = localStorage.getItem(STORE_BAK); const a = r ? JSON.parse(r) : []; return Array.isArray(a) ? a : []; } catch(e){ return []; } }
+
+        async function driveSave(snapshot) {
+            try {
+                driveState = "saving"; refreshSaveLabel();
+                const resp = await fetch(DRIVE_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(snapshot)
+                });
+                const r = await resp.json();
+                if (r && r.ok) { driveState = "saved"; } else { driveState = "error"; }
+            } catch(e) { driveState = "error"; }
+            refreshSaveLabel();
+        }
+        async function driveLoad() {
+            const resp = await fetch(DRIVE_URL, { method: "GET" });
+            const r = await resp.json();
+            if (r && r.existe && isValid(r.dados)) return r.dados;
+            return null;
+        }
+
+        let data, recoveredNote = null;
+        (function loadData(){
+            let primary = null;
+            try { const raw = localStorage.getItem(STORE_KEY); if (raw) primary = JSON.parse(raw); } catch(e){ primary = null; }
+            if (isValid(primary)) { data = primary; return; }
+            const baks = loadBackups();
+            for (let i = baks.length - 1; i >= 0; i--) {
+                if (isValid(baks[i] && baks[i].data)) { data = baks[i].data; recoveredNote = baks[i].when; return; }
+            }
+            data = JSON.parse(JSON.stringify(DEFAULT_DATA));
+        })();
+        let activeNodeId = null, linkMode = false, linkFirst = null, focusSilo = null;
+        function stripData() {
+            return {
+                nodes: data.nodes.map(n => ({ id:n.id, type:n.type, silo:n.silo, label:n.label, origin:n.origin, tags:n.tags, content:n.content })),
+                links: data.links.map(l => ({ source: (l.source.id||l.source), target: (l.target.id||l.target), provenance: l.provenance }))
+            };
+        }
+        let saveTimer = null, localState = "saved";
+        function setSaveState(state, txt) {
+            const el = document.getElementById("save-state");
+            if (!el) return;
+            el.className = "save-state " + state;
+            document.getElementById("save-txt").textContent = txt;
+        }
+        function refreshSaveLabel() {
+            if (localState === "error") { setSaveState("error", "Armazenamento local bloqueado"); return; }
+            if (driveState === "saving") { setSaveState("dirty", "A guardar no Drive…"); return; }
+            if (driveState === "error") { setSaveState("error", "Drive indisponível — guardado localmente"); return; }
+            if (driveState === "saved") { setSaveState("saved", "Guardado no Drive"); return; }
+            setSaveState("saved", "Guardado");
+        }
+        function pushBackup(snapshot) {
+            try {
+                const baks = loadBackups();
+                const last = baks[baks.length - 1];
+                if (last && JSON.stringify(last.data) === JSON.stringify(snapshot)) return;
+                baks.push({ when: new Date().toISOString(), data: snapshot });
+                while (baks.length > 7) baks.shift();
+                localStorage.setItem(STORE_BAK, JSON.stringify(baks));
+            } catch(e){}
+        }
+        function save() {
+            setSaveState("dirty", "Por guardar…");
+            if (saveTimer) clearTimeout(saveTimer);
+            saveTimer = setTimeout(() => {
+                const snapshot = stripData();
+                try {
+                    localStorage.setItem(STORE_KEY, JSON.stringify(snapshot));
+                    pushBackup(snapshot);
+                    localState = "saved";
+                } catch(e) { localState = "error"; }
+                refreshSaveLabel();
+                if (driveTimer) clearTimeout(driveTimer);
+                driveTimer = setTimeout(() => { driveSave(snapshot); }, 1200);
+            }, 600);
+        }
+        const clusterZone = document.getElementById("cluster-zone");
+        let height = clusterZone.clientHeight || window.innerHeight;
+        const svg = d3.select("#cluster-zone").append("svg").attr("width","100%").attr("height","100%");
+        let linkSel, nodeSel, labelSel, simulation;
+        function nodeById(id){ return data.nodes.find(n => n.id === id); }
+        function sharedTagCount(a, b) {
+            if (a.type !== "leaf" || b.type !== "leaf") return 0;
+            let c = 0;
+            for (const fam of ["cat","kw","free"]) {
+                const ta = (a.tags && a.tags[fam]) || [], tb = (b.tags && b.tags[fam]) || [];
+                for (const t of ta) if (tb.includes(t)) c++;
+            }
+            return c;
+        }
+        function linkExists(aId, bId) {
+            return data.links.some(l => { const s=l.source.id||l.source, t=l.target.id||l.target; return (s===aId&&t===bId)||(s===bId&&t===aId); });
+        }
+        function suggestionsFor(nodeId) {
+            const node = nodeById(nodeId);
+            if (!node || node.type !== "leaf") return [];
+            return data.nodes.filter(o => o.type==="leaf" && o.id!==nodeId && !linkExists(nodeId,o.id) && sharedTagCount(node,o)>0)
+                .map(o => ({ node:o, shared: sharedTagCount(node,o) })).sort((a,b)=>b.shared-a.shared);
+        }
+        function nodesForSimulation() {
+            const hoje = new Date().toISOString().slice(0, 10);
+            const active = sondasData.filter(s => s.status !== 'enviada' && s.prazo >= hoje);
+            return active.length > 0 ? [...data.nodes, SONDA_NODE] : [...data.nodes];
+        }
+        function buildSimulation() {
+            simulation = d3.forceSimulation(nodesForSimulation())
+                .force("link", d3.forceLink(data.links).id(d=>d.id).distance(110))
+                .force("charge", d3.forceManyBody().strength(-220))
+                .force("collision", d3.forceCollide().radius(46))
+                .force("center", d3.forceCenter((clusterZone.clientWidth||(window.innerWidth-SIDEBAR))/2, height/2));
+            simulation.on("tick", ticked);
+        }
+        function ticked() {
+            linkSel.attr("x1",d=>d.source.x).attr("y1",d=>d.source.y).attr("x2",d=>d.target.x).attr("y2",d=>d.target.y);
+            nodeSel.attr("cx",d=>d.x).attr("cy",d=>d.y);
+            labelSel.attr("x",d=>d.x).attr("y",d=>d.y);
+        }
+        function isBridge(l) {
+            const s = nodeById(l.source.id||l.source), t = nodeById(l.target.id||l.target);
+            if (!s || !t) return false;
+            return s.silo !== t.silo && l.provenance === "confirmed";
+        }
+        function linkStrength(l) {
+            const s = nodeById(l.source.id||l.source), t = nodeById(l.target.id||l.target);
+            if (!s || !t) return 1;
+            const shared = sharedTagCount(s, t);
+            return shared > 0 ? shared : 1;
+        }
+        function dimmedSilo(silo) { return focusSilo !== null && silo !== focusSilo; }
+
+        function render() {
+            const suggSet = [];
+            data.nodes.forEach(n => {
+                if (n.type !== "leaf") return;
+                suggestionsFor(n.id).forEach(s => {
+                    if (n.id < s.node.id) suggSet.push({ source:n.id, target:s.node.id, suggested:true, shared:s.shared });
+                });
+            });
+            const allLinks = data.links.concat(suggSet);
+            linkSel = svg.selectAll("line.link").data(allLinks, d => (d.source.id||d.source)+"-"+(d.target.id||d.target)+(d.suggested?"-s":""));
+            linkSel.exit().remove();
+            linkSel = linkSel.enter().append("line").merge(linkSel);
+            linkSel
+                .attr("class", d => {
+                    if (d.suggested) return "link suggested";
+                    if (d.provenance === "structural") return "link structural";
+                    if (isBridge(d)) return "link bridge";
+                    return "link";
+                })
+                .style("stroke-width", d => {
+                    if (d.suggested) return Math.min(1 + d.shared*0.5, 3) + "px";
+                    if (d.provenance === "structural") return "1.5px";
+                    return Math.min(1.5 + linkStrength(d)*1.1, 6) + "px";
+                })
+                .classed("dimmed", d => {
+                    const s = nodeById(d.source.id||d.source), t = nodeById(d.target.id||d.target);
+                    if (!s || !t) return false;
+                    if (focusSilo === null) return false;
+                    return dimmedSilo(s.silo) && dimmedSilo(t.silo);
+                });
+
+            const allNodes = nodesForSimulation();
+            nodeSel = svg.selectAll("circle.node").data(allNodes, d=>d.id);
+            nodeSel.exit().remove();
+            const nodeEnter = nodeSel.enter().append("circle")
+                .attr("r", d => d.type==="center" ? 14 : d.type==="sonda" ? 12 : 7)
+                .on("click", onNodeClick)
+                .on("mouseover", (e,d)=>onNodeHover(d.silo))
+                .on("mouseout", ()=>onNodeHover(null))
+                .call(d3.drag()
+                    .on("start", (e,d)=>{ if(!e.active) simulation.alphaTarget(0.2).restart(); d.fx=d.x; d.fy=d.y; })
+                    .on("drag", (e,d)=>{ d.fx=e.x; d.fy=e.y; })
+                    .on("end", (e,d)=>{ if(!e.active) simulation.alphaTarget(0); d.fx=null; d.fy=null; }));
+            nodeSel = nodeEnter.merge(nodeSel);
+            nodeSel.attr("class", d => d.type==="sonda" ? "node node-sonda" : (d.type==="center" ? "node node-center" : "node node-leaf") + (dimmedSilo(d.silo) ? " dimmed" : ""))
+                   .attr("fill", d => d.type==="sonda" ? 'var(--color-sondas)' : siloColor(d.silo))
+                   .attr("fill-opacity", d => d.type==="sonda" ? 0.15 : 1)
+                   .style("stroke", d => d.type==="sonda" ? "var(--color-sondas)" : d.id===activeNodeId ? "#111" : "#fff")
+                   .style("stroke-width", d => d.type==="sonda" ? "2px" : d.id===activeNodeId ? "3px" : (d.type==="center"?"2.5px":"2px"))
+                   .style("stroke-dasharray", d => d.type==="sonda" ? "5,3" : null);
+
+            labelSel = svg.selectAll("text.node-text").data(allNodes, d=>d.id);
+            labelSel.exit().remove();
+            labelSel = labelSel.enter().append("text").attr("dx",18).attr("dy",4).merge(labelSel)
+                .attr("class", d => "node-text" + (d.type==="sonda" ? "" : dimmedSilo(d.silo) ? " dimmed" : ""))
+                .text(d=>d.label);
+
+            simulation.nodes(allNodes);
+            simulation.force("link").links(data.links);
+            simulation.alpha(0.3).restart();
+        }
+        function setFocus(silo) {
+            focusSilo = silo;
+            document.querySelectorAll(".silo-item").forEach(x=>x.classList.remove("active"));
+            if (silo !== null) {
+                const items = document.querySelectorAll(".silo-item");
+                const idx = SILOS.findIndex(s=>s.id===silo);
+                if (items[idx]) items[idx].classList.add("active");
+            }
+            document.getElementById("conjunto-btn").classList.toggle("armed", silo===null);
+            if (silo !== null) openSiloPanel(silo); else closeSiloPanel(true);
+            render();
+            if (silo !== null && simulation) {
+                const center = data.nodes.find(n=>n.type==="center"&&n.silo===silo);
+                if (center) { center.fx=availWidth()/2; center.fy=height/2; simulation.alpha(0.3).restart(); setTimeout(()=>{center.fx=null;center.fy=null;},700); }
+            }
+            setTimeout(recenter, 420);
+        }
+        window.setFocus = setFocus;
+
+        function onNodeHover(silo) {
+            if (linkMode) return;
+            nodeSel.classed("silo-hot", d => silo!==null && d.silo===silo && d.type!=="sonda")
+                   .attr("r", d => {
+                       if (d.type==="sonda") return 12;
+                       const base = d.type==="center"?14:7;
+                       return (silo!==null && d.silo===silo) ? base*1.45 : base;
+                   });
+            labelSel.style("font-weight", d => (silo!==null && d.silo===silo && d.type!=="sonda") ? "700" : "500");
+        }
+
+        function coexistOK() {
+            return window.innerWidth - SIDEBAR - 420 - 580 >= 280;
+        }
+        function availWidth() { return clusterZone.clientWidth || (window.innerWidth - SIDEBAR); }
+
+        function openSiloPanel(silo) {
+            const s = SILOS.find(x=>x.id===silo); if(!s) return;
+            if (!coexistOK() && document.getElementById("editor-zone").classList.contains("open")) {
+                document.getElementById("editor-zone").classList.remove("open"); activeNodeId=null;
+            }
+            document.getElementById("sp-dot").style.background = s.color;
+            document.getElementById("sp-title").textContent = s.label;
+            const leaves = data.nodes.filter(n=>n.type==="leaf"&&n.silo===silo);
+            const bridges = {};
+            data.links.forEach(l=>{ if(l.provenance!=="confirmed")return; const a=nodeById(l.source.id||l.source),b=nodeById(l.target.id||l.target); if(!a||!b)return;
+                if(a.silo===silo&&b.silo!==silo) bridges[b.silo]=(bridges[b.silo]||0)+1;
+                else if(b.silo===silo&&a.silo!==silo) bridges[a.silo]=(bridges[a.silo]||0)+1; });
+            let sum = '<div class="sp-stat"><span class="lbl">Nós</span><span class="val">'+leaves.length+'</span></div>';
+            SILOS.filter(o=>o.id!==silo).forEach(o=>{ const c=bridges[o.id]||0; sum += '<div class="sp-stat"><span class="lbl">Pontes com '+o.label.replace(/^\d+\.\s*/,'')+'</span><span class="val'+(c>0?' bridge':'')+'">'+c+'</span></div>'; });
+            document.getElementById("sp-summary").innerHTML = sum;
+            const list = document.getElementById("sp-list"); list.innerHTML="";
+            if(leaves.length===0){ list.innerHTML='<div class="inter-empty">Ainda sem nós neste silo.</div>'; }
+            leaves.forEach(n=>{
+                const conf = data.links.filter(l=>{const a=l.source.id||l.source,b=l.target.id||l.target; return (a===n.id||b===n.id)&&l.provenance==="confirmed";}).length;
+                const row=document.createElement("div"); row.className="sp-node";
+                row.innerHTML='<span class="sp-node-name">'+n.label+'</span><span class="sp-node-meta">'+(conf>0?conf+' ●':'—')+'</span>';
+                row.onclick=()=>{ if(!coexistOK()){ document.getElementById("silo-panel").classList.remove("open"); } openEditor(n.id); };
+                list.appendChild(row);
+            });
+            document.getElementById("silo-panel").classList.add("open");
+        }
+        function closeSiloPanel(keepFocus) {
+            document.getElementById("silo-panel").classList.remove("open");
+            if (!keepFocus) { focusSilo=null; document.querySelectorAll(".silo-item").forEach(x=>x.classList.remove("active")); document.getElementById("conjunto-btn").classList.add("armed"); render(); }
+            setTimeout(recenter, 420);
+        }
+        function newNodeInSilo() {
+            if(focusSilo){ openNewNode(); document.getElementById("dlg-silo").value=focusSilo; }
+            else openNewNode();
+        }
+        window.closeSiloPanel = closeSiloPanel; window.newNodeInSilo = newNodeInSilo;
+        function onNodeClick(event, d) {
+            if (linkMode) { handleLinkClick(d); return; }
+            if (d.type === "sonda") { openSondasDialog(); return; }
+            if (d.type === "leaf") openEditor(d.id);
+        }
+        function toggleLinkMode() {
+            linkMode = !linkMode; linkFirst = null;
+            document.getElementById("link-btn").classList.toggle("armed", linkMode);
+            clusterZone.classList.toggle("linking", linkMode);
+        }
+        function handleLinkClick(d) {
+            if (d.type !== "leaf") return;
+            if (!linkFirst) { linkFirst = d.id; nodeSel.style("stroke", n=>n.id===d.id?"#111":"#fff").style("stroke-width", n=>n.id===d.id?"3px":(n.type==="center"?"2.5px":"2px")); return; }
+            if (linkFirst === d.id) return;
+            if (!linkExists(linkFirst, d.id)) { data.links.push({ source: linkFirst, target: d.id, provenance: "confirmed" }); save(); }
+            toggleLinkMode(); render();
+            if (activeNodeId) openEditor(activeNodeId);
+        }
+        document.addEventListener("keydown", e => { if (e.key==="Escape" && linkMode) { toggleLinkMode(); render(); } });
+        function openEditor(id) {
+            activeNodeId = id;
+            const n = nodeById(id);
+            document.getElementById("editor-title").value = n.label || "";
+            document.getElementById("editor-body").innerHTML = n.content || "";
+            document.getElementById("silo-indicator").innerText = "Fila ativa: " + siloLabel(n.silo);
+            document.getElementById("meta-parent").innerText = siloLabel(n.silo);
+            document.getElementById("meta-origin").innerText = n.origin === "documento" ? "Documento (corpus / Drive)" : "Manuscrito (meu)";
+            renderTags(n); renderInter(n);
+            ["block-tags","block-inter","block-meta"].forEach(bid=>{ const b=document.getElementById(bid); if(b){ b.classList.add("collapsed"); const tg=b.querySelector(".block-toggle"); if(tg) tg.innerHTML="&#9662;"; } });
+            if (!coexistOK()) { document.getElementById("silo-panel").classList.remove("open"); }
+            document.getElementById("editor-zone").classList.add("open");
+            render(); setTimeout(recenter, 420);
+        }
+        function closeEditor() {
+            activeNodeId = null;
+            document.getElementById("editor-zone").classList.remove("open");
+            render(); setTimeout(recenter, 420);
+        }
+        document.getElementById("editor-title").addEventListener("input", e => { if(!activeNodeId) return; nodeById(activeNodeId).label=e.target.value; labelSel.text(d=>d.label); save(); });
+        document.getElementById("editor-body").addEventListener("input", e => { if(!activeNodeId) return; nodeById(activeNodeId).content=sanitizeHTML(e.target.innerHTML); save(); });
+        function sanitizeHTML(html) {
+            const tmp = document.createElement("div"); tmp.innerHTML = html;
+            const allowed = { B:1, STRONG:1, I:1, EM:1, H3:1, UL:1, OL:1, LI:1, BR:1, DIV:1, P:1 };
+            (function walk(node){
+                for (const child of Array.from(node.childNodes)) {
+                    if (child.nodeType === 1) {
+                        if (!allowed[child.tagName]) {
+                            while (child.firstChild) node.insertBefore(child.firstChild, child);
+                            node.removeChild(child); continue;
+                        }
+                        for (const attr of Array.from(child.attributes)) child.removeAttribute(attr.name);
+                        walk(child);
+                    }
+                }
+            })(tmp);
+            return tmp.innerHTML;
+        }
+        function fmt(ev, cmd, arg) { ev.preventDefault(); document.getElementById("editor-body").focus(); document.execCommand(cmd, false, arg||null);
+            if(activeNodeId){ nodeById(activeNodeId).content = sanitizeHTML(document.getElementById("editor-body").innerHTML); save(); } }
+        function toggleBlock(id) {
+            const block = document.getElementById(id);
+            const toggle = block.querySelector(".block-toggle");
+            const collapsed = block.classList.toggle("collapsed");
+            toggle.innerHTML = collapsed ? "&#9662;" : "&#9652;";
+        }
+        window.fmt = fmt; window.toggleBlock = toggleBlock;
+        function renderTags(n) {
+            if (!n.tags) n.tags = { cat:[], kw:[], free:[] };
+            const area = document.getElementById("tags-area"); area.innerHTML = "";
+            for (const fam of ["cat","kw","free"]) {
+                const cfg = TAGS[fam];
+                const title = document.createElement("div"); title.className="tag-fam-title"; title.textContent=cfg.title; area.appendChild(title);
+                const row = document.createElement("div"); row.className="tag-row";
+                const universe = Array.from(new Set([...cfg.items, ...(n.tags[fam]||[])]));
+                universe.forEach(t => {
+                    const on = (n.tags[fam]||[]).includes(t);
+                    const el = document.createElement("span");
+                    el.className = "tag "+cfg.fam+(on?" on":""); el.textContent=t;
+                    el.onclick = () => { toggleTag(n,fam,t); };
+                    row.appendChild(el);
+                });
+                const add = document.createElement("button"); add.className="tag-add"; add.textContent="+ etiqueta";
+                add.onclick = () => { const v=prompt("Nova etiqueta ("+cfg.title.toLowerCase()+"):"); if(v&&v.trim()){ if(!n.tags[fam]) n.tags[fam]=[]; if(!n.tags[fam].includes(v.trim())) n.tags[fam].push(v.trim()); save(); renderTags(n); renderInter(n);} };
+                row.appendChild(add); area.appendChild(row);
+            }
+        }
+        function toggleTag(n, fam, t) {
+            if(!n.tags[fam]) n.tags[fam]=[];
+            const i = n.tags[fam].indexOf(t);
+            if(i>=0) n.tags[fam].splice(i,1); else n.tags[fam].push(t);
+            save(); renderTags(n); renderInter(n); render();
+        }
+        function renderInter(n) {
+            const area = document.getElementById("inter-area"); area.innerHTML="";
+            const confirmed = data.links.filter(l => { const s=l.source.id||l.source, t=l.target.id||l.target; return (s===n.id||t===n.id) && l.provenance==="confirmed"; })
+                .map(l => { const s=l.source.id||l.source, t=l.target.id||l.target; return s===n.id?t:s; });
+            confirmed.forEach(oid => {
+                const o = nodeById(oid); if(!o) return;
+                const row=document.createElement("div"); row.className="inter-row";
+                row.innerHTML = '<span class="inter-name">'+o.label+'</span><span class="inter-right"><span class="inter-prov prov-conf">tua</span><span class="inter-x" title="remover">&#10005;</span></span>';
+                row.querySelector(".inter-x").onclick = () => { removeLink(n.id,oid); };
+                area.appendChild(row);
+            });
+            const sugg = suggestionsFor(n.id);
+            sugg.forEach(s => {
+                const row=document.createElement("div"); row.className="inter-row";
+                row.innerHTML = '<span class="inter-name">'+s.node.label+'</span><span class="inter-right"><span class="inter-prov prov-sug">sugerida · '+s.shared+'</span><span class="sug-accept">ligar &#10003;</span></span>';
+                row.querySelector(".sug-accept").onclick = () => { data.links.push({source:n.id,target:s.node.id,provenance:"confirmed"}); save(); render(); openEditor(n.id); };
+                area.appendChild(row);
+            });
+            if (confirmed.length===0 && sugg.length===0) {
+                const e=document.createElement("div"); e.className="inter-empty"; e.textContent="Sem intersecções nem sugestões. Adiciona etiquetas partilhadas ou liga manualmente.";
+                area.appendChild(e);
+            }
+        }
+        function removeLink(aId,bId) {
+            data.links = data.links.filter(l => { const s=l.source.id||l.source, t=l.target.id||l.target; return !((s===aId&&t===bId)||(s===bId&&t===aId)); });
+            save(); render(); if(activeNodeId) openEditor(activeNodeId);
+        }
+        function openNewNode() {
+            const sel=document.getElementById("dlg-silo"); sel.innerHTML="";
+            SILOS.forEach(s=>{ const o=document.createElement("option"); o.value=s.id; o.textContent=s.label; sel.appendChild(o); });
+            document.getElementById("dlg-name").value="";
+            document.getElementById("dialog-back").classList.add("show");
+            document.getElementById("dlg-name").focus();
+        }
+        function closeDialog(){ document.getElementById("dialog-back").classList.remove("show"); }
+        function confirmNewNode() {
+            const name=document.getElementById("dlg-name").value.trim(); if(!name) return;
+            const silo=document.getElementById("dlg-silo").value;
+            const origin=document.getElementById("dlg-origin").value;
+            const id="u_"+Date.now().toString(36);
+            const cx=(clusterZone.clientWidth||600)/2, cy=height/2;
+            data.nodes.push({ id, type:"leaf", silo, label:name, origin, tags:{cat:[],kw:[],free:[]}, content:"", x:cx, y:cy });
+            const center = data.nodes.find(nn=>nn.type==="center"&&nn.silo===silo);
+            if(center) data.links.push({ source:id, target:center.id, provenance:"structural" });
+            save(); closeDialog(); render(); openEditor(id);
+        }
+        function deleteCurrentNode() {
+            if(!activeNodeId) return;
+            const n=nodeById(activeNodeId);
+            if(n.type==="center"){ alert("Os silos não podem ser apagados."); return; }
+            if(!confirm("Apagar o nó \""+n.label+"\"? Esta ação não se desfaz.")) return;
+            data.links = data.links.filter(l => { const s=l.source.id||l.source, t=l.target.id||l.target; return s!==activeNodeId && t!==activeNodeId; });
+            data.nodes = data.nodes.filter(nn=>nn.id!==activeNodeId);
+            save(); closeEditor(); render();
+        }
+        window.exportData = function() {
+            const blob=new Blob([JSON.stringify(stripData(),null,2)],{type:"application/json"});
+            const a=document.createElement("a"); a.href=URL.createObjectURL(blob);
+            a.download="gemeo-digital_"+new Date().toISOString().slice(0,10)+".json"; a.click();
+        };
+        window.importData = function(ev) {
+            const file=ev.target.files[0]; if(!file) return;
+            const reader=new FileReader();
+            reader.onload = () => {
+                try {
+                    const parsed=JSON.parse(reader.result);
+                    if(!parsed.nodes||!parsed.links) throw new Error("formato");
+                    data=parsed; activeNodeId=null; save();
+                    svg.selectAll("*").remove(); buildSimulation(); render(); closeEditor();
+                    alert("Importado com sucesso.");
+                } catch(e){ alert("Ficheiro inválido."); }
+                ev.target.value="";
+            };
+            reader.readAsText(file);
+        };
+
+        // --- Sondas (Chamadas de Artigos / CFPs) ---
+        async function loadSondas() {
+            try {
+                const resp = await fetch(SONDAS_URL, { method: "GET" });
+                const r = await resp.json();
+                if (r && r.existe && r.dados && Array.isArray(r.dados.sondas)) {
+                    const hoje = new Date().toISOString().slice(0, 10);
+                    const todas = r.dados.sondas;
+                    sondasData = todas.filter(s => s.status === 'enviada' || s.prazo >= hoje);
+                    if (sondasData.length < todas.length) saveSondas();
+                } else {
+                    sondasData = [];
+                }
+                render();
+            } catch(e) { console.warn("Sondas indisponíveis:", e); }
+        }
+        async function saveSondas() {
+            try {
+                await fetch(SONDAS_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ sondas: sondasData })
+                });
+            } catch(e) { console.warn("Erro ao guardar sondas:", e); }
+        }
+
+        // --- Rejeições: regista padrão e remove a sonda ---
+        async function registarRejeicao(sonda) {
+            const hoje = new Date().toISOString().slice(0, 10);
+            try {
+                // Ler rejeições actuais
+                const resp = await fetch(REJEICOES_URL, { method: "GET" });
+                const r = await resp.json();
+                const rejeicoes = (r.existe && r.dados && r.dados.rejeicoes) ? r.dados.rejeicoes : [];
+
+                // Incrementar ou criar entradas por área (tipo "tema")
+                const temas = Array.isArray(sonda.areas) ? sonda.areas : [];
+                temas.forEach(tema => {
+                    const norm = tema.trim().toLowerCase();
+                    const exist = rejeicoes.find(x => x.tipo === 'tema' && x.valor.toLowerCase() === norm);
+                    if (exist) {
+                        exist.contagem++;
+                        exist.data_ultimo = hoje;
+                        if (exist.contagem >= 2) exist.filtro_activo = true;
+                    } else {
+                        rejeicoes.push({
+                            id: Math.random().toString(36).slice(2, 10),
+                            tipo: 'tema',
+                            valor: tema.trim(),
+                            contagem: 1,
+                            filtro_activo: false,
+                            data_criacao: hoje,
+                            data_ultimo: hoje
+                        });
+                    }
+                });
+
+                // Guardar rejeições actualizadas
+                await fetch(REJEICOES_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ rejeicoes })
+                });
+
+                // Feedback sobre filtros recentemente activados
+                const novosAtivos = temas.filter(t => {
+                    const norm = t.trim().toLowerCase();
+                    const entry = rejeicoes.find(x => x.tipo === 'tema' && x.valor.toLowerCase() === norm);
+                    return entry && entry.filtro_activo && entry.contagem === 2;
+                });
+                if (novosAtivos.length > 0) {
+                    showToast("Filtro activado: " + novosAtivos.join(", "), 4000);
+                }
+            } catch(e) {
+                console.warn("Erro ao registar rejeição:", e);
+            }
+        }
+
+        window.openSondasDialog = function() {
+            renderSondasDialog();
+            document.getElementById("sondas-dialog-back").classList.add("show");
+        };
+        window.closeSondasDialog = function() {
+            document.getElementById("sondas-dialog-back").classList.remove("show");
+        };
+        function renderSondasDialog() {
+            const list = document.getElementById("sondas-list");
+            const hoje = new Date().toISOString().slice(0, 10);
+            const active = sondasData.filter(s => s.status !== 'enviada' && s.prazo >= hoje);
+            if (active.length === 0) {
+                list.innerHTML = '<div class="sondas-empty">Sem chamadas ativas de momento.</div>';
+                return;
+            }
+            list.innerHTML = '';
+            active.forEach(s => {
+                const dias = Math.ceil((new Date(s.prazo) - new Date(hoje)) / 86400000);
+                const urgente = dias <= 14;
+                const badge = s.status === 'ativa'
+                    ? '<span class="sonda-status-badge badge-ativa">Em preparação</span>'
+                    : '<span class="sonda-status-badge badge-pendente">Pendente</span>';
+                const btnPreparar = s.status === 'pendente'
+                    ? `<button class="sonda-btn sonda-btn-preparar" onclick="ativarSonda('${s.id}')">Preparar</button>`
+                    : '';
+                const urlLink = s.url
+                    ? `<a class="sonda-link" href="${s.url}" target="_blank">↗ Ver chamada</a>`
+                    : '';
+                const card = document.createElement("div");
+                card.className = "sonda-card";
+                card.innerHTML = `
+                    <div class="sonda-titulo">${s.titulo}</div>
+                    <div class="sonda-meta">
+                        ${badge}
+                        <span class="sonda-prazo${urgente ? ' urgente' : ''}">Prazo: ${s.prazo} · ${dias} dias</span>
+                        ${s.areas && s.areas.length ? '<span class="sonda-areas">' + s.areas.join(' · ') + '</span>' : ''}
+                    </div>
+                    ${s.descricao ? '<div class="sonda-desc">' + s.descricao + '</div>' : ''}
+                    ${s.conexao ? '<div class="sonda-conexao">' + s.conexao + '</div>' : ''}
+                    <div class="sonda-btns">
+                        ${btnPreparar}
+                        <button class="sonda-btn sonda-btn-enviada" onclick="marcarEnviada('${s.id}')">Enviada ✓</button>
+                        <button class="sonda-btn sonda-btn-rejeitar" onclick="rejeitarSonda('${s.id}')">Rejeitar</button>
+                        ${urlLink}
+                    </div>`;
+                list.appendChild(card);
+            });
+        }
+        window.ativarSonda = function(id) {
+            const s = sondasData.find(x => x.id === id);
+            if (s) { s.status = 'ativa'; saveSondas(); renderSondasDialog(); }
+        };
+        window.marcarEnviada = function(id) {
+            const s = sondasData.find(x => x.id === id);
+            if (s) { s.status = 'enviada'; saveSondas(); renderSondasDialog(); render(); }
+        };
+        window.rejeitarSonda = async function(id) {
+            const s = sondasData.find(x => x.id === id);
+            if (!s) return;
+            // Regista padrão de rejeição antes de remover
+            await registarRejeicao(s);
+            sondasData = sondasData.filter(x => x.id !== id);
+            saveSondas(); renderSondasDialog(); render();
+        };
+
+        function buildSiloMenu() {
+            const menu=document.getElementById("silo-menu"); menu.innerHTML="";
+            SILOS.forEach((s,i)=>{
+                const li=document.createElement("li"); li.className="silo-item";
+                li.innerHTML='<span class="silo-dot" style="background:'+s.color+'"></span>'+s.label;
+                li.onclick=()=>{ setFocus(focusSilo===s.id ? null : s.id); };
+                menu.appendChild(li);
+            });
+        }
+        function recenter() {
+            height=clusterZone.clientHeight||window.innerHeight;
+            const w=clusterZone.clientWidth||(window.innerWidth-SIDEBAR);
+            simulation.force("center", d3.forceCenter(w/2, height/2));
+            simulation.alpha(0.3).restart();
+        }
+        window.addEventListener("resize", recenter);
+        window.openNewNode=openNewNode; window.closeDialog=closeDialog; window.confirmNewNode=confirmNewNode;
+        window.toggleLinkMode=toggleLinkMode; window.closeEditor=closeEditor; window.deleteCurrentNode=deleteCurrentNode;
+
+        // --- IA ---
+        window.openAI = function() {
+            document.getElementById("ai-input").value = "";
+            const resp = document.getElementById("ai-response");
+            resp.className = "ai-response"; resp.textContent = "";
+            document.getElementById("ai-dialog-back").classList.add("show");
+            setTimeout(() => document.getElementById("ai-input").focus(), 50);
+        };
+        window.closeAIDialog = function() {
+            document.getElementById("ai-dialog-back").classList.remove("show");
+        };
+        window.sendAI = async function() {
+            const msg = document.getElementById("ai-input").value.trim();
+            if (!msg) return;
+            const btn = document.getElementById("ai-send-btn");
+            const resp = document.getElementById("ai-response");
+            btn.disabled = true; btn.textContent = "A pensar…";
+            resp.className = "ai-response show ai-loading"; resp.textContent = "A consultar a IA…";
+            try {
+                const r = await fetch(AI_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ mensagem: msg, contexto: stripData() })
+                });
+                const result = await r.json();
+                resp.className = "ai-response show";
+                resp.textContent = result.resposta || result.erro || "Sem resposta.";
+            } catch(e) {
+                resp.className = "ai-response show";
+                resp.textContent = "Erro de ligação: " + e.message;
+            }
+            btn.disabled = false; btn.textContent = "Enviar";
+        };
+        document.getElementById("ai-input").addEventListener("keydown", e => {
+            if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) window.sendAI();
+        });
+
+        buildSiloMenu(); buildSimulation(); render(); loadSondas();
+        document.getElementById("conjunto-btn").classList.add("armed");
+        if (recoveredNote) {
+            setSaveState("error", "Dados recuperados de cópia");
+            setTimeout(() => { alert("O armazenamento principal estava vazio ou corrompido.\nRecuperei a cópia de segurança de " + new Date(recoveredNote).toLocaleString("pt-PT") + ".\n\nConfirma que está tudo certo e, por segurança, carrega Exportar."); }, 400);
+        } else {
+            try { const snap = stripData(); localStorage.setItem(STORE_KEY, JSON.stringify(snap)); pushBackup(snap); localState="saved"; setSaveState("saved", "Guardado"); }
+            catch(e){ localState="error"; setSaveState("error", "Armazenamento bloqueado — exporta!"); }
+        }
+        setSaveState("dirty", "A ligar ao Drive…");
+        (async function syncFromDrive(){
+            try {
+                const remoto = await driveLoad();
+                if (remoto) {
+                    const localStr = JSON.stringify(stripData());
+                    const remotoStr = JSON.stringify(remoto);
+                    if (localStr !== remotoStr) {
+                        data = remoto; activeNodeId = null;
+                        svg.selectAll("*").remove(); buildSimulation(); render(); closeEditor();
+                        try { localStorage.setItem(STORE_KEY, JSON.stringify(remoto)); pushBackup(remoto); } catch(e){}
+                    }
+                    driveState = "saved"; refreshSaveLabel();
+                } else {
+                    await driveSave(stripData());
+                }
+            } catch(e) {
+                driveState = "error"; refreshSaveLabel();
+            }
+        })();
+    });
+    </script>
+</body>
+</html>

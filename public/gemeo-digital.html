@@ -366,6 +366,7 @@
                     <button class="action-btn" onclick="openCapturar()"><span class="ic">📥</span> Capturar</button>
                     <button class="action-btn" onclick="openAI()"><span class="ic">✦</span> Perguntar à IA</button>
                     <button class="action-btn" onclick="openArquivo()"><span class="ic">📦</span> Arquivo Histórico</button>
+                    <button class="action-btn" onclick="exportarNotebook()"><span class="ic">📓</span> Exportar para NotebookLM</button>
                     <div class="action-row">
                         <button class="action-btn" onclick="exportData()"><span class="ic">&#8615;</span> Exportar</button>
                         <button class="action-btn" onclick="document.getElementById('import-file').click()"><span class="ic">&#8613;</span> Importar</button>
@@ -1515,6 +1516,20 @@
             data.nodes = data.nodes.filter(nn=>nn.id!==activeNodeId);
             save(); closeEditor(); render();
         }
+        window.exportarNotebook = function() {
+            // Abre dialog rápido para escolher o que exportar
+            const silo = prompt(
+                "Exportar para NotebookLM\n\n" +
+                "Silos disponíveis: escrita · aulas · cst · produtos\n" +
+                "Deixa em branco para exportar tudo.\n\n" +
+                "Silo (ou enter para todos):"
+            );
+            if (silo === null) return; // cancelou
+            let url = "https://gemeo-servidor.vercel.app/api/exportar-notebook?leituras=1";
+            if (silo.trim()) url += "&silo=" + encodeURIComponent(silo.trim());
+            window.open(url, "_blank");
+        };
+
         window.exportData = function() {
             const blob=new Blob([JSON.stringify(stripData(),null,2)],{type:"application/json"});
             const a=document.createElement("a"); a.href=URL.createObjectURL(blob);

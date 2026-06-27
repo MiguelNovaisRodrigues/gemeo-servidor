@@ -1,0 +1,13 @@
+#!/bin/bash
+GEMEO="$HOME/gemeo-servidor/gemeo-digital.html"
+URL="file://$GEMEO"
+
+# Chrome em modo app (janela sem UI de browser)
+if [ -d "/Applications/Google Chrome.app" ]; then
+    open -a "Google Chrome" --args --app="$URL"
+elif [ -d "/Applications/Chromium.app" ]; then
+    open -a "Chromium" --args --app="$URL"
+else
+    # Safari ou browser por omissão
+    open "$URL"
+fi
