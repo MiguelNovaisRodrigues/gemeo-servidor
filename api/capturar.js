@@ -3,8 +3,27 @@
 // POST { url?, texto?, contexto? }
 // Devolve { resumo, itens: [{ tipo_item, ...campos }] }
 
+import { lerGist, escreverGist } from "./_gist.js";
+
 const PERFIL = `Fotógrafo e doutorando na FBAUL (Lisboa). Trabalho: fotografia artística, imagens interiores, corpo, CST (Corpo Sujeito Território), teoria da imagem, Flusser, visualidade contemporânea, filosofia da fotografia, estudos visuais, práticas artísticas baseadas em investigação, história da arte contemporânea, filosofia da arte, filosofia da tecnologia, memória e arquivo.
 Silos de trabalho: escrita (artigos/tese), aulas (docência IPT+IADE), cst (trabalho artístico/fotografia), produtos (publicações), administrativo (burocracia institucional).`;
+
+const APRENDIZAGEM_FILE = "gemeo-aprendizagem-captura.json";
+
+// Devolve as últimas N correções de silos como exemplos few-shot
+async function carregarExemplos(n = 6) {
+  try {
+    const raw = await lerGist(APRENDIZAGEM_FILE);
+    if (!raw || raw === "{}") return "";
+    const lista = JSON.parse(raw);
+    if (!Array.isArray(lista) || lista.length === 0) return "";
+    const recentes = lista.slice(-n);
+    return "\n\nEXEMPLOS DE CLASSIFICAÇÕES ANTERIORES (aprende com estes):\n" +
+      recentes.map(e =>
+        `- Título: "${e.titulo}" → silos confirmados: [${e.silos_confirmados.join(", ")}]`
+      ).join("\n");
+  } catch { return ""; }
+}
 
 async function fetchPagina(url) {
   try {
@@ -29,13 +48,17 @@ async function fetchPagina(url) {
 }
 
 async function classificar(texto, urlOrigem) {
-  const prompt = `${PERFIL}
+  const exemplos = await carregarExemplos(6);
+  const prompt = `${PERFIL}${exemplos}
 
 Analisa o seguinte conteúdo e classifica o que encontras. Pode conter uma ou mais coisas:
 - "sonda": chamada para artigos/conferência/exposição/residência com prazo
-- "leitura": paper académico, livro, texto, referência bibliográfica
+- "leitura": paper académico, livro, artigo, site, texto, referência bibliográfica
 - "node": tarefa, ideia, projecto, compromisso ou qualquer outra coisa relevante para o trabalho
 - Se não encontrares nada relevante, devolve itens vazio
+
+IMPORTANTE para leituras: sugere TODOS os silos onde este conteúdo faz sentido (pode ser mais de um).
+Usa os exemplos de classificações anteriores para calibrar as sugestões de silos.
 
 URL de origem (se disponível): ${urlOrigem || "nenhum"}
 
@@ -58,13 +81,15 @@ Responde APENAS com JSON (sem texto antes ou depois):
     },
     {
       "tipo_item": "leitura",
-      "titulo": "título do paper/livro",
+      "titulo": "título do paper/livro/artigo/site",
       "autores": ["Apelido, Nome"],
       "ano": 2023,
-      "revista": "nome da revista/editora",
+      "revista": "nome da revista/editora/site (ou null)",
       "doi": "10.xxx/xxx ou null",
-      "resumo": "1-2 frases sobre o texto",
-      "relevancia": 7
+      "url": "${urlOrigem || "null"}",
+      "resumo": "1-2 frases sobre o conteúdo",
+      "relevancia": 7,
+      "silos_sugeridos": ["escrita", "aulas"]
     },
     {
       "tipo_item": "node",
@@ -115,6 +140,23 @@ export default async function handler(req, res) {
 
   try {
     const body = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
+
+    // Guardar correção de aprendizagem: POST { _feedback: true, titulo, silos_sugeridos, silos_confirmados }
+    if (body?._feedback) {
+      const raw = await lerGist(APRENDIZAGEM_FILE).catch(() => "[]");
+      const lista = (() => { try { return JSON.parse(raw || "[]"); } catch { return []; } })();
+      lista.push({
+        titulo: body.titulo || "",
+        silos_sugeridos: body.silos_sugeridos || [],
+        silos_confirmados: body.silos_confirmados || [],
+        data: new Date().toISOString().slice(0, 10),
+      });
+      // Manter apenas os últimos 100
+      const recentes = lista.slice(-100);
+      await escreverGist(APRENDIZAGEM_FILE, JSON.stringify(recentes));
+      return res.status(200).json({ ok: true });
+    }
+
     const { url, texto, contexto } = body || {};
 
     if (!url && !texto) {
@@ -126,7 +168,6 @@ export default async function handler(req, res) {
     // Se tiver URL, vai buscar a página
     if (url) {
       const paginaTexto = await fetchPagina(url);
-      // Combina: texto da página + qualquer texto extra passado pelo utilizador
       conteudo = [paginaTexto, texto, contexto].filter(Boolean).join("\n\n");
     } else if (contexto) {
       conteudo = [texto, contexto].filter(Boolean).join("\n\n");

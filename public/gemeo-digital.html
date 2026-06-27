@@ -463,6 +463,27 @@
                             <div class="meta-row"><span class="meta-label">Natureza</span><span class="meta-value" id="meta-origin"></span></div>
                         </div>
                     </div>
+                    <!-- PAINEL DE LEITURA: só aparece para nós com leitura_id -->
+                    <div id="block-leitura" class="block collapsed" style="display:none;margin-top:2px;">
+                        <div class="block-head" onclick="toggleBlock('block-leitura')"><span class="section-label">Leitura</span><span class="block-toggle">&#9662;</span></div>
+                        <div class="block-body" id="block-leitura-body" style="padding:10px 0 0;">
+                            <div id="leitura-url-row" style="display:none;margin-bottom:10px;">
+                                <a id="leitura-url-link" href="#" target="_blank" rel="noopener"
+                                   style="font-size:11px;color:var(--color-leituras);text-decoration:none;word-break:break-all;">
+                                   ↗ Abrir página original
+                                </a>
+                            </div>
+                            <div id="leitura-silos-row" style="margin-bottom:10px;font-size:11px;color:var(--text-muted)">
+                                Existe em: <span id="leitura-silos-list" style="font-weight:600"></span>
+                            </div>
+                            <div id="anotacoes-lista" style="margin-bottom:10px;"></div>
+                            <textarea id="nova-anotacao-input" placeholder="Escreve uma anotação…"
+                                style="width:100%;box-sizing:border-box;padding:8px 10px;font-size:12px;font-family:inherit;border:1px solid var(--border-fine);border-radius:2px;resize:vertical;min-height:60px;outline:none;line-height:1.5;background:#fafafa;"></textarea>
+                            <button onclick="guardarAnotacao()" style="margin-top:6px;padding:5px 14px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;background:var(--color-leituras);color:#fff;border:none;border-radius:2px;cursor:pointer;font-family:inherit;">
+                                Guardar anotação
+                            </button>
+                        </div>
+                    </div>
                     <button class="btn-del" onclick="deleteCurrentNode()">Apagar nó</button>
                 </div>
             </div>
@@ -1340,6 +1361,8 @@
             // Mostrar botão Cadeira só para nós de cadeira
             const isCadeira = (n.tags?.cat || []).includes("cadeira");
             document.getElementById("cadeira-btn").style.display = isCadeira ? "flex" : "none";
+            // Painel de Leitura
+            renderPainelLeitura(n);
             // Mostrar editor, esconder cockpit
             document.getElementById("cockpit-view").style.display = "none";
             document.getElementById("editor-view").style.display = "flex";
@@ -2379,6 +2402,9 @@
 
         // ── CAPTURA UNIVERSAL ──────────────────────────────────────────
         const CAPTURAR_URL = "https://gemeo-servidor.vercel.app/api/capturar";
+        const ANOTAR_URL   = "https://gemeo-servidor.vercel.app/api/anotar";
+        const SILO_LABEL   = { escrita: "Escrita", aulas: "Aulas", cst: "Trabalho Artístico", produtos: "Produtos", administrativo: "Adm." };
+        const SILO_COR     = { escrita: "#111111", aulas: "#777777", cst: "#9e2a2b", produtos: "#5a6b5d", administrativo: "#6b5b95" };
         let capturaItens = [];
 
         window.openCapturar = function(prefill) {
@@ -2442,13 +2468,32 @@
                     : item.tipo_item === 'leitura'
                     ? [(item.autores||[]).slice(0,2).join(', '), item.ano, item.revista].filter(Boolean).join(' · ')
                     : item.descricao || '';
+
+                // Para leituras: checkboxes de silos
+                let silosHtml = '';
+                if (item.tipo_item === 'leitura') {
+                    const sugeridos = item.silos_sugeridos || ['escrita'];
+                    const todosOsSilos = ['escrita', 'aulas', 'cst', 'produtos'];
+                    silosHtml = `<div style="margin:8px 0;display:flex;flex-wrap:wrap;gap:6px;align-items:center">
+                        <span style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;font-weight:600">Silos:</span>
+                        ${todosOsSilos.map(s => `
+                        <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:11px;color:${SILO_COR[s]}">
+                            <input type="checkbox" data-captura-silo="${i}-${s}" ${sugeridos.includes(s) ? 'checked' : ''}
+                                style="accent-color:${SILO_COR[s]};width:12px;height:12px">
+                            ${SILO_LABEL[s]}
+                        </label>`).join('')}
+                    </div>`;
+                }
+
                 html += `<div style="padding:12px 0;border-bottom:1px solid var(--border-fine)">
                     <div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:6px">
                         ${tipoBadge}
                         <span style="font-size:13px;font-weight:500;flex:1">${titulo}</span>
                     </div>
-                    ${meta ? `<div style="font-size:11px;color:var(--text-muted);margin-bottom:8px">${meta}</div>` : ''}
-                    ${item.descricao && item.tipo_item !== 'node' ? `<div style="font-size:12px;line-height:1.5;margin-bottom:8px">${item.descricao}</div>` : ''}
+                    ${meta ? `<div style="font-size:11px;color:var(--text-muted);margin-bottom:6px">${meta}</div>` : ''}
+                    ${item.resumo && item.tipo_item === 'leitura' ? `<div style="font-size:12px;line-height:1.5;margin-bottom:6px;color:#444">${item.resumo}</div>` : ''}
+                    ${item.descricao && item.tipo_item !== 'node' && item.tipo_item !== 'leitura' ? `<div style="font-size:12px;line-height:1.5;margin-bottom:8px">${item.descricao}</div>` : ''}
+                    ${silosHtml}
                     <button class="dlg-ok" onclick="confirmarCaptura(${i})" style="font-size:11px;padding:5px 14px">+ Adicionar ao Gémeo</button>
                 </div>`;
             });
@@ -2468,19 +2513,52 @@
                 });
                 await saveSondas();
             } else if (item.tipo_item === 'leitura') {
-                leiturasData.push({
-                    id: "cap_" + Date.now(),
-                    titulo: item.titulo, autores: item.autores || [],
-                    ano: item.ano || null, revista: item.revista || null,
-                    doi: item.doi || null, url_doi: item.doi ? "https://doi.org/" + item.doi : null,
-                    resumo: item.resumo || null, tipo: "contemporaneo",
-                    relevancia: item.relevancia || 7, status: "selecionada",
-                    notas: "", data_criacao: new Date().toISOString().slice(0,10),
-                    data_leitura: null, sonda_id: null, origem_sync: "captura",
+                // Descobrir quais silos estão marcados
+                const silosChecked = ['escrita','aulas','cst','produtos'].filter(s => {
+                    const cb = document.querySelector(`[data-captura-silo="${i}-${s}"]`);
+                    return cb ? cb.checked : false;
                 });
-                await saveLeituras();
+                const silosFinais = silosChecked.length > 0 ? silosChecked : (item.silos_sugeridos || ['escrita']);
+                const silosOriginais = item.silos_sugeridos || [];
+
+                // Guardar feedback de aprendizagem se houve correção
+                if (JSON.stringify([...silosOriginais].sort()) !== JSON.stringify([...silosFinais].sort())) {
+                    fetch(CAPTURAR_URL, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            _feedback: true,
+                            titulo: item.titulo,
+                            silos_sugeridos: silosOriginais,
+                            silos_confirmados: silosFinais,
+                        }),
+                    }).catch(() => {});
+                }
+
+                // Criar um nó por silo, todos com o mesmo leitura_id
+                const leitura_id = "lid_" + Date.now();
+                for (const silo of silosFinais) {
+                    const id = "cap_" + Date.now() + "_" + silo;
+                    data.nodes.push({
+                        id, type: "leaf", silo,
+                        label: item.titulo || "Leitura",
+                        origin: "manuscrito", origem_sync: "captura",
+                        tags: { cat: ["leitura"], kw: item.autores || [], free: [] },
+                        content: item.resumo || "",
+                        url: item.url || null,
+                        leitura_id,
+                        autores: item.autores || [],
+                        ano: item.ano || null,
+                        revista: item.revista || null,
+                        doi: item.doi || null,
+                        relevancia: item.relevancia || 7,
+                        status_leitura: "sugerida",
+                        anotacoes: [],
+                    });
+                }
+                save();
             } else {
-                // node
+                // node genérico
                 const id = "cap_" + Date.now();
                 data.nodes.push({
                     id, type: "leaf",
@@ -2493,12 +2571,83 @@
                 });
                 save();
             }
-            // Remove item da lista e mostra confirmação
             capturaItens[i] = { ...item, _adicionado: true };
             const btns = document.getElementById("capturar-resultado").querySelectorAll(".dlg-ok");
             if (btns[i]) { btns[i].textContent = "✓ Adicionado"; btns[i].disabled = true; btns[i].style.background = "#5a6b5d"; }
             render(); renderCockpit();
             showToast("Adicionado ao Gémeo ✓");
+        };
+
+        // ── PAINEL DE LEITURA ──────────────────────────────────────────
+        function renderPainelLeitura(n) {
+            const bloco = document.getElementById("block-leitura");
+            if (!n.leitura_id) { bloco.style.display = "none"; return; }
+            bloco.style.display = "block";
+
+            // URL
+            const urlRow = document.getElementById("leitura-url-row");
+            const urlLink = document.getElementById("leitura-url-link");
+            if (n.url) { urlRow.style.display = "block"; urlLink.href = n.url; }
+            else { urlRow.style.display = "none"; }
+
+            // Silos onde existe
+            const irmaos = data.nodes.filter(x => x.leitura_id === n.leitura_id);
+            document.getElementById("leitura-silos-list").innerHTML =
+                irmaos.map(x => `<span style="color:${SILO_COR[x.silo]||'#999'}">${SILO_LABEL[x.silo]||x.silo}</span>`).join(" · ");
+
+            // Anotações (agrega de todos os irmãos, sem duplicados)
+            const vistas = new Set();
+            const todasAnotacoes = [];
+            for (const irmao of irmaos) {
+                for (const a of (irmao.anotacoes || [])) {
+                    const chave = `${a.silo}|${a.texto}|${a.data}`;
+                    if (!vistas.has(chave)) { vistas.add(chave); todasAnotacoes.push(a); }
+                }
+            }
+            todasAnotacoes.sort((a,b) => (a.data||"").localeCompare(b.data||""));
+
+            const lista = document.getElementById("anotacoes-lista");
+            if (todasAnotacoes.length === 0) {
+                lista.innerHTML = `<div style="font-size:12px;color:var(--text-muted);font-style:italic;padding:4px 0">Sem anotações.</div>`;
+            } else {
+                lista.innerHTML = todasAnotacoes.map(a => `
+                    <div style="border-left:3px solid ${a.cor||'#999'};padding:6px 10px;margin-bottom:6px;background:#fafafa;border-radius:0 2px 2px 0;">
+                        <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;">
+                            <span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:${a.cor||'#999'}">${SILO_LABEL[a.silo]||a.silo}</span>
+                            <span style="font-size:10px;color:var(--text-muted)">${a.data||''}</span>
+                        </div>
+                        <div style="font-size:12px;line-height:1.5;color:#333">${a.texto}</div>
+                    </div>`).join('');
+            }
+            document.getElementById("nova-anotacao-input").value = "";
+        }
+
+        window.guardarAnotacao = async function() {
+            if (!activeNodeId) return;
+            const n = nodeById(activeNodeId);
+            if (!n.leitura_id) return;
+            const texto = document.getElementById("nova-anotacao-input").value.trim();
+            if (!texto) return;
+
+            // Adicionar localmente em todos os irmãos (optimistic)
+            const anotacao = { silo: n.silo, cor: SILO_COR[n.silo]||'#999', texto, data: new Date().toISOString().slice(0,10) };
+            const irmaos = data.nodes.filter(x => x.leitura_id === n.leitura_id);
+            const vistos = new Set();
+            for (const irmao of irmaos) {
+                if (!Array.isArray(irmao.anotacoes)) irmao.anotacoes = [];
+                const chave = `${anotacao.silo}|${anotacao.texto}|${anotacao.data}`;
+                if (!vistos.has(chave)) { vistos.add(chave); irmao.anotacoes.push(anotacao); }
+            }
+            save();
+            renderPainelLeitura(n);
+            showToast("Anotação guardada em " + irmaos.map(x=>SILO_LABEL[x.silo]||x.silo).join(", "));
+
+            // Sincronizar via API (em background)
+            fetch(ANOTAR_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ leitura_id: n.leitura_id, texto, silo: n.silo }),
+            }).catch(() => {});
         };
 
         // Bookmarklet: detecta ?capturar= na URL ao carregar
