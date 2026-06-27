@@ -378,15 +378,15 @@
         </div>
         <div class="silo-panel" id="silo-panel">
             <div class="silo-panel-header">
-                <div class="silo-panel-title"><span class="sp-dot" id="sp-dot"></span><span id="sp-title">Silo</span></div>
+                <div class="silo-panel-title"><span class="sp-dot" id="sp-dot"></span><span id="sp-title"></span></div>
                 <button class="btn-close" onclick="closeSiloPanel()">Fechar</button>
             </div>
             <div class="silo-panel-content">
                 <div class="sp-summary" id="sp-summary"></div>
-                <div class="section-label">Nós deste silo</div>
+                <div class="section-label">Nós</div>
                 <div id="sp-list"></div>
                 <div class="sp-actions">
-                    <button class="action-btn" id="sp-new" onclick="newNodeInSilo()"><span class="ic">+</span> Novo nó neste silo</button>
+                    <button class="action-btn" id="sp-new" onclick="newNodeInSilo()"><span class="ic">+</span> Novo nó</button>
                     <button class="action-btn" onclick="setFocus(null)"><span class="ic">&#9728;</span> Vista de conjunto</button>
                 </div>
             </div>
@@ -460,7 +460,7 @@
                     <div class="block collapsed" id="block-meta">
                         <div class="block-head" onclick="toggleBlock('block-meta')"><span class="section-label">Metadados</span><span class="block-toggle">&#9662;</span></div>
                         <div class="block-body">
-                            <div class="meta-row"><span class="meta-label">Silo</span><span class="meta-value" id="meta-parent"></span></div>
+                            <div class="meta-row"><span class="meta-label">Área</span><span class="meta-value" id="meta-parent"></span></div>
                             <div class="meta-row"><span class="meta-label">Natureza</span><span class="meta-value" id="meta-origin"></span></div>
                         </div>
                     </div>
@@ -494,7 +494,7 @@
                 <h3 id="dlg-title">Novo nó</h3>
                 <label>Título</label>
                 <input type="text" id="dlg-name" placeholder="Nome do nó">
-                <label>Silo</label>
+                <label>Área</label>
                 <select id="dlg-silo"></select>
                 <label>Natureza</label>
                 <select id="dlg-origin">
@@ -638,7 +638,7 @@
             <div class="dialog" style="width: 440px;">
                 <h3>Perguntar à IA</h3>
                 <label>Pergunta</label>
-                <textarea class="ai-textarea" id="ai-input" placeholder="Ex: Que ligações faltam explorar? Que nó devo criar a seguir? Resume o silo de Escrita."></textarea>
+                <textarea class="ai-textarea" id="ai-input" placeholder="Ex: Que ligações faltam explorar? Que nó devo criar a seguir? Resume a área de Escrita."></textarea>
                 <div class="ai-response" id="ai-response"></div>
                 <div class="dialog-actions">
                     <button class="dlg-cancel" onclick="closeAIDialog()">Fechar</button>
@@ -700,12 +700,25 @@
             kw:   { title: "Palavras-chave de investigação", fam: "fam-kw", items: ["paisagem","repetição","fragmentação","performatividade","memória","imagem técnica"] },
             free: { title: "Etiquetas livres", fam: "fam-free", items: [] }
         };
+        // Migração: renomear nós centrais com prefixo "Silo "
+        const RENAME_CENTER = {
+            "Silo Escrita": "Escrita", "Silo Aulas": "Aulas",
+            "Silo Artístico (CST)": "CST", "Silo Produtos": "Produtos",
+            "Silo Administrativo": "Administrativo"
+        };
+        function migrarDados(d) {
+            if (!d || !d.nodes) return d;
+            for (const n of d.nodes) {
+                if (n.type === "center" && RENAME_CENTER[n.label]) n.label = RENAME_CENTER[n.label];
+            }
+            return d;
+        }
         const DEFAULT_DATA = {
             nodes: [
-                { id: "n_escrita", type: "center", silo: "escrita",  label: "Silo Escrita" },
-                { id: "n_aulas",   type: "center", silo: "aulas",    label: "Silo Aulas" },
-                { id: "n_cst",     type: "center", silo: "cst",      label: "Silo Artístico (CST)" },
-                { id: "n_prod",    type: "center", silo: "produtos", label: "Silo Produtos" },
+                { id: "n_escrita", type: "center", silo: "escrita",  label: "Escrita" },
+                { id: "n_aulas",   type: "center", silo: "aulas",    label: "Aulas" },
+                { id: "n_cst",     type: "center", silo: "cst",      label: "CST" },
+                { id: "n_prod",    type: "center", silo: "produtos", label: "Produtos" },
                 { id: "l_ejmap", type: "leaf", silo: "escrita", label: "Abstract EJMAP", origin: "manuscrito",
                   tags: { cat:["publicação"], kw:["imagem técnica","memória"], free:[] },
                   content: "Este artigo propõe uma discussão em torno da visualidade contemporânea no cenário de transição para modelos de simulação algorítmica. O foco central reside na desestabilização do programa do aparelho, tal como formulado por Vilém Flusser, quando confrontado com a saturação de dados que caracteriza a cultura visual atual." },
@@ -778,10 +791,10 @@
         (function loadData(){
             let primary = null;
             try { const raw = localStorage.getItem(STORE_KEY); if (raw) primary = JSON.parse(raw); } catch(e){ primary = null; }
-            if (isValid(primary)) { data = primary; return; }
+            if (isValid(primary)) { data = migrarDados(primary); return; }
             const baks = loadBackups();
             for (let i = baks.length - 1; i >= 0; i--) {
-                if (isValid(baks[i] && baks[i].data)) { data = baks[i].data; recoveredNote = baks[i].when; return; }
+                if (isValid(baks[i] && baks[i].data)) { data = migrarDados(baks[i].data); recoveredNote = baks[i].when; return; }
             }
             data = JSON.parse(JSON.stringify(DEFAULT_DATA));
         })();
@@ -1051,20 +1064,23 @@
                        return "node node-leaf" + (dimmedSilo(d.silo) ? " dimmed" : "");
                    })
                    .attr("fill", d => {
+                       if (d.type === "center") return "none"; // anel oco — só cor de contorno
                        if (d.type === "sonda") return 'var(--color-sondas)';
                        if (d.type === "leitura") { const l = leiturasData.find(x => x.id === d.leitura_id); return leituraFill(l || {}); }
                        return siloLayerFill(d.silo);
                    })
                    .attr("fill-opacity", d => d.type === "sonda" ? 0.15 : d.type === "leitura" ? 0.85 : 1)
                    .style("stroke", d => {
+                       if (d.type === "center") return siloLayerFill(d.silo); // anel oco com cor do domínio
                        if (d.type === "sonda") return "var(--color-sondas)";
                        if (d.type === "leitura") { const l = leiturasData.find(x => x.id === d.leitura_id); return leituraStroke(l || {}); }
                        return d.id === activeNodeId ? "#111" : "#fff";
                    })
                    .style("stroke-width", d => {
+                       if (d.type === "center") return d.id === activeNodeId ? "3px" : "2px";
                        if (d.type === "sonda") return "2px";
                        if (d.type === "leitura") { const l = leiturasData.find(x => x.id === d.leitura_id); return l?.status === 'lida' ? "2.5px" : "1.5px"; }
-                       return d.id === activeNodeId ? "3px" : (d.type === "center" ? "2.5px" : "2px");
+                       return d.id === activeNodeId ? "3px" : "2px";
                    })
                    .style("stroke-dasharray", d => {
                        if (d.type === "sonda") return "5,3";
@@ -1113,6 +1129,7 @@
             labelSel.exit().remove();
             labelSel = labelSel.enter().append("text").attr("dx",18).attr("dy",4).merge(labelSel)
                 .attr("class", d => "node-text" + (d.type==="sonda" ? "" : dimmedSilo(d.silo) ? " dimmed" : ""))
+                .style("display", d => d.type === "center" ? "none" : null) // nós centrais sem label
                 .text(d=>d.label);
 
             simulation.nodes(allNodes);
@@ -1292,7 +1309,7 @@
                 if(a.silo===silo&&b.silo!==silo) bridges[b.silo]=(bridges[b.silo]||0)+1;
                 else if(b.silo===silo&&a.silo!==silo) bridges[a.silo]=(bridges[a.silo]||0)+1; });
             let sum = '<div class="sp-stat"><span class="lbl">Nós</span><span class="val">'+leaves.length+'</span></div>';
-            SILOS.filter(o=>o.id!==silo).forEach(o=>{ const c=bridges[o.id]||0; sum += '<div class="sp-stat"><span class="lbl">Pontes com '+o.label.replace(/^\d+\.\s*/,'')+'</span><span class="val'+(c>0?' bridge':'')+'">'+c+'</span></div>'; });
+            SILOS.filter(o=>o.id!==silo).forEach(o=>{ const c=bridges[o.id]||0; sum += '<div class="sp-stat"><span class="lbl">↔ '+o.label.replace(/^\d+\.\s*/,'')+'</span><span class="val'+(c>0?' bridge':'')+'">'+c+'</span></div>'; });
             document.getElementById("sp-summary").innerHTML = sum;
             const list = document.getElementById("sp-list"); list.innerHTML="";
             if(leaves.length===0){ list.innerHTML='<div class="inter-empty">Ainda sem nós neste silo.</div>'; }
@@ -1510,7 +1527,7 @@
         function deleteCurrentNode() {
             if(!activeNodeId) return;
             const n=nodeById(activeNodeId);
-            if(n.type==="center"){ alert("Os silos não podem ser apagados."); return; }
+            if(n.type==="center"){ alert("Os nós de ancoragem não podem ser apagados."); return; }
             if(!confirm("Apagar o nó \""+n.label+"\"? Esta ação não se desfaz.")) return;
             data.links = data.links.filter(l => { const s=l.source.id||l.source, t=l.target.id||l.target; return s!==activeNodeId && t!==activeNodeId; });
             data.nodes = data.nodes.filter(nn=>nn.id!==activeNodeId);
@@ -1520,9 +1537,9 @@
             // Abre dialog rápido para escolher o que exportar
             const silo = prompt(
                 "Exportar para NotebookLM\n\n" +
-                "Silos disponíveis: escrita · aulas · cst · produtos\n" +
+                "Áreas disponíveis: escrita · aulas · cst · produtos\n" +
                 "Deixa em branco para exportar tudo.\n\n" +
-                "Silo (ou enter para todos):"
+                "Área (ou enter para todas):"
             );
             if (silo === null) return; // cancelou
             let url = "https://gemeo-servidor.vercel.app/api/exportar-notebook?leituras=1";
@@ -2490,7 +2507,7 @@
                     const sugeridos = item.silos_sugeridos || ['escrita'];
                     const todosOsSilos = ['escrita', 'aulas', 'cst', 'produtos'];
                     silosHtml = `<div style="margin:8px 0;display:flex;flex-wrap:wrap;gap:6px;align-items:center">
-                        <span style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;font-weight:600">Silos:</span>
+                        <span style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;font-weight:600">Áreas:</span>
                         ${todosOsSilos.map(s => `
                         <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:11px;color:${SILO_COR[s]}">
                             <input type="checkbox" data-captura-silo="${i}-${s}" ${sugeridos.includes(s) ? 'checked' : ''}
@@ -2708,6 +2725,7 @@
             try {
                 const remoto = await driveLoad();
                 if (remoto) {
+                    migrarDados(remoto);
                     const localStr = JSON.stringify(stripData());
                     const remotoStr = JSON.stringify(remoto);
                     if (localStr !== remotoStr) {
