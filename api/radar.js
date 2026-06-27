@@ -1,11 +1,13 @@
-// Radar de CFPs — varre fontes públicas activamente e devolve chamadas relevantes
-// GET /api/radar                    → lista de candidatos (perfil de Miguel)
+// GET /api/radar                    → lista de candidatos CFP (perfil de Miguel)
 // GET /api/radar?commit=1           → idem + envia para /api/sincronizar
-// POST /api/radar { perfil, areas } → radar com perfil customizado (serviço público)
+// POST /api/radar { perfil, areas } → radar com perfil customizado
+// GET/POST /api/radar?tipo=sondas   → CRUD sondas (ex-sondas.js)
+// GET/POST /api/radar?tipo=rejeicoes→ CRUD rejeicoes (ex-rejeicoes.js)
 
-import { lerGist } from "./_gist.js";
+import { lerGist, escreverGist } from "./_gist.js";
 
-const SONDAS_FILE = "gemeo-sondas.json";
+const SONDAS_FILE    = "gemeo-sondas.json";
+const REJEICOES_FILE = "gemeo-rejeicoes.json";
 
 const PERFIL = `Fotógrafo e doutorando na FBAUL (Lisboa). Trabalho: fotografia artística, imagens interiores, corpo, CST (Corpo Sujeito Território), teoria da imagem, Flusser, visualidade contemporânea, filosofia da fotografia, estudos visuais, práticas artísticas baseadas em investigação.
 Áreas de interesse expandido (relevantes se houver ligação à imagem, ao corpo, à prática artística ou à investigação): história da arte contemporânea, filosofia da arte, filosofia da tecnologia e da técnica (Stiegler, Simondon, Heidegger), estudos da memória e do arquivo, materialidade da imagem, experiência estética.
@@ -31,7 +33,6 @@ async function fetchTexto(url) {
     });
     if (!resp.ok) return "";
     const html = await resp.text();
-    // Strip HTML tags, collapse whitespace
     return html
       .replace(/<script[\s\S]*?<\/script>/gi, "")
       .replace(/<style[\s\S]*?<\/style>/gi, "")
@@ -145,6 +146,46 @@ export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   if (req.method === "OPTIONS") { res.status(200).end(); return; }
+
+  const tipo = req.query?.tipo;
+
+  // --- CRUD sondas (ex-sondas.js) ---
+  if (tipo === "sondas") {
+    try {
+      if (req.method === "GET") {
+        const conteudo = await lerGist(SONDAS_FILE);
+        if (!conteudo || conteudo === "[]") { res.status(200).json({ existe: false, dados: null }); return; }
+        const parsed = JSON.parse(conteudo);
+        const dados = Array.isArray(parsed) ? { sondas: parsed } : parsed;
+        res.status(200).json({ existe: true, dados }); return;
+      }
+      if (req.method === "POST") {
+        const conteudo = typeof req.body === "string" ? req.body : JSON.stringify(req.body);
+        await escreverGist(SONDAS_FILE, conteudo);
+        res.status(200).json({ ok: true }); return;
+      }
+      res.status(405).json({ erro: "Método não suportado" }); return;
+    } catch (e) { res.status(500).json({ erro: String(e.message || e) }); return; }
+  }
+
+  // --- CRUD rejeicoes (ex-rejeicoes.js) ---
+  if (tipo === "rejeicoes") {
+    try {
+      if (req.method === "GET") {
+        const conteudo = await lerGist(REJEICOES_FILE);
+        if (!conteudo) { res.status(200).json({ existe: false, dados: { rejeicoes: [] } }); return; }
+        res.status(200).json({ existe: true, dados: JSON.parse(conteudo) }); return;
+      }
+      if (req.method === "POST") {
+        const conteudo = typeof req.body === "string" ? req.body : JSON.stringify(req.body);
+        await escreverGist(REJEICOES_FILE, conteudo);
+        res.status(200).json({ ok: true }); return;
+      }
+      res.status(405).json({ erro: "Método não suportado" }); return;
+    } catch (e) { res.status(500).json({ erro: String(e.message || e) }); return; }
+  }
+
+  // --- Radar CFP ---
   if (req.method !== "GET" && req.method !== "POST") {
     res.status(405).json({ erro: "Método não suportado" }); return;
   }
@@ -152,7 +193,6 @@ export default async function handler(req, res) {
   try {
     const commit = req.query?.commit === "1" || req.query?.commit === "true";
 
-    // Modo serviço público: POST com perfil customizado
     let perfilActivo = PERFIL;
     let fontesActivas = FONTES_WIKICFP;
     let modoPublico = false;
@@ -162,7 +202,6 @@ export default async function handler(req, res) {
       if (body.perfil) {
         perfilActivo = body.perfil;
         modoPublico = true;
-        // Gerar queries wikicfp a partir das áreas fornecidas
         const areas = body.areas || [];
         if (areas.length > 0) {
           fontesActivas = areas.slice(0, 5).map(a => a.toLowerCase().trim());
@@ -170,7 +209,6 @@ export default async function handler(req, res) {
       }
     }
 
-    // Sondas existentes (só no modo pessoal, para evitar duplicados)
     const titulosExistentes = [];
     if (!modoPublico) {
       const sondasRaw = await lerGist(SONDAS_FILE);
@@ -178,7 +216,6 @@ export default async function handler(req, res) {
       titulosExistentes.push(...sondas.map(s => s.titulo?.toLowerCase().trim()));
     }
 
-    // Fetch WikiCFP em paralelo + sugestões de conhecimento
     const [textos, conhecimento] = await Promise.all([
       Promise.all(
         fontesActivas.map(q =>
@@ -188,10 +225,8 @@ export default async function handler(req, res) {
       sugerirDeConhecimento(titulosExistentes, perfilActivo),
     ]);
 
-    // Extrai candidatos do WikiCFP
     const doWikicfp = await extrairCandidatos(textos, titulosExistentes, perfilActivo);
 
-    // Junta tudo, remove duplicados por título
     const titulosVistos = new Set(titulosExistentes);
     const candidatos = [];
     for (const c of [...conhecimento, ...doWikicfp]) {
@@ -201,21 +236,13 @@ export default async function handler(req, res) {
       candidatos.push({ ...c, id: "radar_" + Math.random().toString(36).slice(2, 8) });
     }
 
-    // Ordenar por relevância
     candidatos.sort((a, b) => (b.relevancia || 0) - (a.relevancia || 0));
 
-    // Se commit=true, envia para /api/sincronizar
     if (commit && candidatos.length > 0) {
-      const hoje = new Date().toISOString().slice(0, 10);
       const novasSondas = candidatos.map(c => ({
-        titulo: c.titulo,
-        revista: c.revista || "",
-        prazo: c.prazo || "",
-        areas: c.areas || [],
-        descricao: c.descricao || "",
-        url: c.url || null,
-        status: "pendente",
-        origem_sync: "radar",
+        titulo: c.titulo, revista: c.revista || "", prazo: c.prazo || "",
+        areas: c.areas || [], descricao: c.descricao || "", url: c.url || null,
+        status: "pendente", origem_sync: "radar",
       }));
       try {
         const baseUrl = process.env.VERCEL_URL
@@ -229,12 +256,7 @@ export default async function handler(req, res) {
       } catch {}
     }
 
-    res.status(200).json({
-      ok: true,
-      total: candidatos.length,
-      candidatos,
-      timestamp: new Date().toISOString(),
-    });
+    res.status(200).json({ ok: true, total: candidatos.length, candidatos, timestamp: new Date().toISOString() });
   } catch (e) {
     res.status(500).json({ erro: String(e.message || e) });
   }

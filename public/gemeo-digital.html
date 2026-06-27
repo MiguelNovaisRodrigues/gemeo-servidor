@@ -744,11 +744,11 @@
         const STORE_BAK = "gemeo_v2_bak";
         const DRIVE_URL = "https://gemeo-servidor.vercel.app/api/dados";
         const AI_URL = "https://gemeo-servidor.vercel.app/api/ai";
-        const SONDAS_URL = "https://gemeo-servidor.vercel.app/api/sondas";
-        const REJEICOES_URL = "https://gemeo-servidor.vercel.app/api/rejeicoes";
+        const SONDAS_URL = "https://gemeo-servidor.vercel.app/api/radar?tipo=sondas";
+        const REJEICOES_URL = "https://gemeo-servidor.vercel.app/api/radar?tipo=rejeicoes";
         const LEITURAS_URL = "https://gemeo-servidor.vercel.app/api/leituras";
-        const LEITURAS_BUSCAR_URL = "https://gemeo-servidor.vercel.app/api/leituras-buscar";
-        const LEITURAS_ANALISAR_URL = "https://gemeo-servidor.vercel.app/api/leituras-analisar";
+        const LEITURAS_BUSCAR_URL = "https://gemeo-servidor.vercel.app/api/leituras?action=buscar";
+        const LEITURAS_ANALISAR_URL = "https://gemeo-servidor.vercel.app/api/leituras?action=analisar";
         const SONDA_NODE = { id: '__sonda__', type: 'sonda', silo: '__sonda__', label: 'Chamadas' };
         const LEITURAS_NODE = { id: '__leituras__', type: 'leituras', silo: '__leituras__', label: 'Leituras' };
         let sondasData = [];
@@ -2214,7 +2214,7 @@
         });
 
         // ── CADEIRA DIALOG ─────────────────────────────────────────────
-        const ENSINO_CADEIRA_URL = "https://gemeo-servidor.vercel.app/api/ensino-cadeira";
+        const ENSINO_CADEIRA_URL = "https://gemeo-servidor.vercel.app/api/ensino?cadeira=1";
         let cadeiraId = null;
         let cadeiraData = null;
         let cadeiraTabAtual = "programa";
@@ -2244,7 +2244,7 @@
         async function carregarCadeira() {
             document.getElementById("cadeira-save-status").textContent = "A carregar…";
             try {
-                const r = await fetch(ENSINO_CADEIRA_URL + "?id=" + cadeiraId);
+                const r = await fetch(ENSINO_CADEIRA_URL + "&id=" + cadeiraId);
                 const j = await r.json();
                 cadeiraData = j.dados;
                 renderCadeiraDialog();
