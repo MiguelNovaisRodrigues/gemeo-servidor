@@ -67,7 +67,8 @@ export default async function handler(req, res) {
     const sondasAdicionadas = [];
     if (novasSondas.length > 0) {
       const sondasRaw = await lerGist(SONDAS_FILE);
-      const sondas = sondasRaw && sondasRaw !== "[]" ? JSON.parse(sondasRaw) : [];
+      const sondasParsed = sondasRaw && sondasRaw !== "[]" ? JSON.parse(sondasRaw) : [];
+      const sondas = Array.isArray(sondasParsed) ? sondasParsed : [];
       const titulosExist = new Set(sondas.map(s => s.titulo?.toLowerCase().trim()));
 
       for (const s of novasSondas) {
